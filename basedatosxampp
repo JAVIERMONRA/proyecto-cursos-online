@@ -1,0 +1,40 @@
+pega esto en xammp en sql para la base de datos
+
+--Crear base de datos
+CREATE DATABASE IF NOT EXISTS plataforma_cursos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE plataforma_cursos;
+
+-- Tabla de usuarios
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  rol ENUM('admin','estudiante') DEFAULT 'estudiante',
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de cursos
+CREATE TABLE IF NOT EXISTS cursos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT NOT NULL,
+  profesorId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (profesorId) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+-- Tabla de inscripciones (relación muchos a muchos)
+CREATE TABLE IF NOT EXISTS inscripciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuarioId INT NOT NULL,
+  cursoId INT NOT NULL,
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (usuarioId) REFERENCES usuarios(id) ON DELETE CASCADE,
+  FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE
+);
+
+-- Insertar usuarios de prueba (contraseñas en texto plano solo para ejemplo)
+INSERT INTO usuarios (nombre, email, password, rol) VALUES
+('Administrador', 'admin@demo.com', '123456', 'admin'),
+('Estudiante', 'estudiante@demo.com', '123456', 'estudiante');

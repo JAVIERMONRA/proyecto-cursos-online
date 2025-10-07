@@ -1,0 +1,9 @@
+{
+  "name": "proyecto-cursos",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backend": "cd backend-cursos && npm run dev",
+    "frontend": "cd frontend-cursos && npm start"
+  }
+}

@@ -1,0 +1,28 @@
+/* index.css — usando solo Bootstrap */
+
+/* Importa el CSS de Bootstrap */
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+/* Tus estilos personalizados */
+body {
+  background-color: #f8f9fa;
+  color: #212529;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Modo oscuro opcional (si lo activas manualmente con JS o una clase) */
+body.dark {
+  background-color: #212529;
+  color: #f8f9fa;
+}
+
+/* Ejemplo de personalización */
+.container-custom {
+  max-width: 900px;
+  margin: 2rem auto;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}

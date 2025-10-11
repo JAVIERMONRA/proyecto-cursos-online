@@ -1,40 +1,174 @@
 pega esto en xammp en sql para la base de datos
 
---Crear base de datos
-CREATE DATABASE IF NOT EXISTS plataforma_cursos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- ============================================
+-- SCRIPT COMPLETO BASE DE DATOS
+-- Plataforma de Cursos Online
+-- ============================================
+
+-- 1. CREAR LA BASE DE DATOS
+DROP DATABASE IF EXISTS plataforma_cursos;
+CREATE DATABASE plataforma_cursos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE plataforma_cursos;
 
--- Tabla de usuarios
-CREATE TABLE IF NOT EXISTS usuarios (
+-- ============================================
+-- 2. TABLA DE USUARIOS
+-- ============================================
+CREATE TABLE usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
+  email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  rol ENUM('admin','estudiante') DEFAULT 'estudiante',
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tabla de cursos
-CREATE TABLE IF NOT EXISTS cursos (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  titulo VARCHAR(255) NOT NULL,
-  descripcion TEXT NOT NULL,
-  profesorId INT NOT NULL,
+  rol ENUM('estudiante', 'admin') DEFAULT 'estudiante',
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (profesorId) REFERENCES usuarios(id) ON DELETE CASCADE
-);
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_email (email),
+  INDEX idx_rol (rol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla de inscripciones (relación muchos a muchos)
-CREATE TABLE IF NOT EXISTS inscripciones (
+-- ============================================
+-- 3. TABLA DE CURSOS
+-- ============================================
+CREATE TABLE cursos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  profesorId INT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (profesorId) REFERENCES usuarios(id) ON DELETE SET NULL,
+  INDEX idx_profesorId (profesorId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- 4. TABLA DE SECCIONES DE CURSOS
+-- ============================================
+CREATE TABLE curso_secciones (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  cursoId INT NOT NULL,
+  subtitulo VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  orden INT DEFAULT 0,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE,
+  INDEX idx_cursoId (cursoId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- 5. TABLA DE ARCHIVOS DE SECCIONES
+-- ============================================
+CREATE TABLE seccion_archivos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  seccionId INT NOT NULL,
+  nombreArchivo VARCHAR(255) NOT NULL,
+  rutaArchivo VARCHAR(500) NOT NULL,
+  tipoArchivo VARCHAR(100),
+  tamanio BIGINT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (seccionId) REFERENCES curso_secciones(id) ON DELETE CASCADE,
+  INDEX idx_seccionId (seccionId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- 6. TABLA DE INSCRIPCIONES
+-- ============================================
+CREATE TABLE inscripciones (
   id INT AUTO_INCREMENT PRIMARY KEY,
   usuarioId INT NOT NULL,
   cursoId INT NOT NULL,
-  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  fechaInscripcion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  progreso DECIMAL(5,2) DEFAULT 0.00,
+  completado BOOLEAN DEFAULT FALSE,
   FOREIGN KEY (usuarioId) REFERENCES usuarios(id) ON DELETE CASCADE,
-  FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE
-);
+  FOREIGN KEY (cursoId) REFERENCES cursos(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_inscripcion (usuarioId, cursoId),
+  INDEX idx_usuarioId (usuarioId),
+  INDEX idx_cursoId (cursoId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insertar usuarios de prueba (contraseñas en texto plano solo para ejemplo)
-INSERT INTO usuarios (nombre, email, password, rol) VALUES
-('Administrador', 'admin@demo.com', '123456', 'admin'),
-('Estudiante', 'estudiante@demo.com', '123456', 'estudiante');
+-- ============================================
+-- 7. DATOS DE PRUEBA
+-- ============================================
+
+-- Insertar usuario administrador
+-- Password: admin123 (hasheado con bcrypt)
+INSERT INTO usuarios (nombre, email, password, rol) VALUES 
+('Administrador', 'admin@demo.com', '$2a$10$CwTycUXWue0Thq9StjUM0uyhG6xRLyhXdXDnpMF0z4PEQ1C4nBP6i', 'admin');
+
+-- Insertar usuario estudiante de prueba
+-- Password: estudiante123 (hasheado con bcrypt)
+INSERT INTO usuarios (nombre, email, password, rol) VALUES 
+('Juan Estudiante', 'estudiante@test.com', '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p6EMkfq.leyAXi3mXnJ5vQmu', 'estudiante');
+
+-- Insertar más estudiantes de prueba
+INSERT INTO usuarios (nombre, email, password, rol) VALUES 
+('María García', 'maria@test.com', '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p6EMkfq.leyAXi3mXnJ5vQmu', 'estudiante'),
+('Pedro López', 'pedro@test.com', '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p6EMkfq.leyAXi3mXnJ5vQmu', 'estudiante');
+
+-- Insertar cursos de ejemplo
+INSERT INTO cursos (titulo, descripcion, profesorId) VALUES 
+('Introducción a React', 'Aprende los fundamentos de React desde cero', 1),
+('JavaScript Avanzado', 'Domina conceptos avanzados de JavaScript', 1),
+('Node.js y Express', 'Crea APIs REST con Node.js y Express', 1);
+
+-- Insertar secciones para el curso de React (cursoId = 1)
+INSERT INTO curso_secciones (cursoId, subtitulo, descripcion, orden) VALUES 
+(1, '¿Qué es React?', 'Introducción a la librería React y sus conceptos básicos', 1),
+(1, 'Componentes y Props', 'Aprende a crear componentes y pasar datos con props', 2),
+(1, 'Estado y Eventos', 'Manejo del estado y eventos en React', 3),
+(1, 'Hooks', 'useState, useEffect y otros hooks importantes', 4);
+
+-- Insertar secciones para JavaScript Avanzado (cursoId = 2)
+INSERT INTO curso_secciones (cursoId, subtitulo, descripcion, orden) VALUES 
+(2, 'Closures', 'Entendiendo los closures en JavaScript', 1),
+(2, 'Promesas y Async/Await', 'Manejo de operaciones asíncronas', 2),
+(2, 'Prototipos', 'Sistema de prototipos en JavaScript', 3);
+
+-- Insertar algunas inscripciones de ejemplo
+INSERT INTO inscripciones (usuarioId, cursoId, progreso) VALUES 
+(2, 1, 25.50),
+(2, 2, 50.00),
+(3, 1, 10.00);
+
+-- ============================================
+-- 8. VERIFICACIÓN
+-- ============================================
+
+-- Ver todos los usuarios
+SELECT id, nombre, email, rol FROM usuarios;
+
+-- Ver todos los cursos
+SELECT * FROM cursos;
+
+-- Ver secciones por curso
+SELECT c.titulo AS curso, s.subtitulo, s.descripcion, s.orden
+FROM cursos c
+LEFT JOIN curso_secciones s ON c.id = s.cursoId
+ORDER BY c.id, s.orden;
+
+-- Ver inscripciones
+SELECT u.nombre AS estudiante, c.titulo AS curso, i.progreso, i.fechaInscripcion
+FROM inscripciones i
+JOIN usuarios u ON i.usuarioId = u.id
+JOIN cursos c ON i.cursoId = c.id;
+
+-- ============================================
+-- 9. INFORMACIÓN DE CREDENCIALES
+-- ============================================
+
+/*
+CREDENCIALES DE ACCESO:
+
+Administrador:
+- Email: admin@demo.com
+- Password: admin123
+
+Estudiantes:
+- Email: estudiante@test.com
+  Password: estudiante123
+
+- Email: maria@test.com
+  Password: estudiante123
+
+- Email: pedro@test.com
+  Password: estudiante123
+*/

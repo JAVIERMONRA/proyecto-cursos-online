@@ -2,12 +2,22 @@ import { Request, Response } from "express";
 import pool from "../config/db.js";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
+/**
+ * Representa la estructura básica de un curso dentro del sistema.
+ */
 interface Curso extends RowDataPacket {
   id: number;
   titulo: string;
   descripcion: string;
 }
 
+/**
+ * Permite a un usuario autenticado inscribirse en un curso específico.
+ * 
+ * - Requiere que el usuario esté autenticado.
+ * - Registra la inscripción en la tabla `inscripciones`.
+ * - Controla si el usuario ya se encuentra inscrito en el curso.
+ */
 export const inscribirseCurso = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.user?.id;
   const { cursoId } = req.params;
@@ -33,6 +43,13 @@ export const inscribirseCurso = async (req: Request, res: Response): Promise<voi
   }
 };
 
+/**
+ * Obtiene todos los cursos en los que el usuario autenticado se encuentra inscrito.
+ * 
+ * - Verifica autenticación del usuario.
+ * - Realiza una unión entre las tablas `cursos` e `inscripciones`.
+ * - Retorna la lista de cursos asociados al usuario.
+ */
 export const obtenerMisCursos = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.user?.id;
 
@@ -56,6 +73,12 @@ export const obtenerMisCursos = async (req: Request, res: Response): Promise<voi
   }
 };
 
+/**
+ * Permite a un usuario autenticado desinscribirse de un curso.
+ * 
+ * - Elimina el registro de la tabla `inscripciones`.
+ * - Verifica si el usuario realmente estaba inscrito antes de eliminar.
+ */
 export const desinscribirseCurso = async (req: Request, res: Response): Promise<void> => {
   const usuarioId = req.user?.id;
   const { cursoId } = req.params;

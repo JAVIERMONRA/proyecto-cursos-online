@@ -1,33 +1,72 @@
+/**
+ * Componente: AdminDashboard
+ * ---------------------------------------------------------------
+ * Este componente representa el panel de administración del sistema.
+ * Permite al administrador:
+ *  - Ver estadísticas generales (cursos, usuarios, inscripciones)
+ *  - Crear nuevos cursos (a través de CrearCursoForm)
+ *  - Listar, editar y eliminar cursos existentes
+ *  - Editar secciones internas de cada curso
+ *
+ * Utiliza Axios para conectarse con el backend y requiere un token JWT
+ * almacenado en el localStorage.
+ */
+
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import CrearCursoForm from "../components/CrearCursoForm";
 
+/** Interfaz de una sección dentro de un curso */
+interface Seccion {
+  id: number;
+  subtitulo: string;
+  descripcion: string;
+}
+
+/** Interfaz de un curso general */
 interface Curso {
   id: number;
   titulo: string;
   descripcion: string;
+  secciones?: Seccion[]; // ← Secciones del curso
 }
 
+/** Interfaz con las estadísticas del panel */
 interface Estadisticas {
   cursos: number;
   usuarios: number;
   inscripciones: number;
 }
 
+/**
+ * Componente principal del panel administrativo
+ */
 function AdminDashboard() {
+  /** Estado que almacena las estadísticas del sistema */
   const [stats, setStats] = useState<Estadisticas>({
     cursos: 0,
     usuarios: 0,
     inscripciones: 0,
   });
+
+  /** Lista de cursos cargados desde el backend */
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const [nuevoCurso, setNuevoCurso] = useState({ titulo: "", descripcion: "" });
+
+  /** Curso actualmente seleccionado para editar */
   const [cursoEditando, setCursoEditando] = useState<Curso | null>(null);
+
+  /** Token de autenticación del usuario */
   const token = localStorage.getItem("token");
 
-  // Cargar datos iniciales
+  /** Hook para redirecciones */
+  const navigate = useNavigate();
+
+  // === Cargar datos iniciales ===
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Se ejecutan ambas peticiones en paralelo
         const [estadisticas, cursosData] = await Promise.all([
           axios.get("http://localhost:4000/admin/estadisticas", {
             headers: { Authorization: `Bearer ${token}` },
@@ -37,6 +76,7 @@ function AdminDashboard() {
           }),
         ]);
 
+        // Actualizar estados
         setStats(estadisticas.data);
         setCursos(cursosData.data);
       } catch (err) {
@@ -46,27 +86,24 @@ function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Crear curso
-  const crearCurso = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nuevoCurso.titulo || !nuevoCurso.descripcion)
-      return alert("Completa todos los campos");
-
+  /**
+   * Recarga manualmente la lista de cursos
+   */
+  const fetchCursos = async () => {
     try {
-      await axios.post("http://localhost:4000/cursos", nuevoCurso, {
+      const response = await axios.get("http://localhost:4000/cursos", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setNuevoCurso({ titulo: "", descripcion: "" });
-      const { data } = await axios.get("http://localhost:4000/cursos", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCursos(data);
+      setCursos(response.data);
     } catch (error) {
-      alert("Error al crear curso");
+      console.error("Error al recargar cursos:", error);
     }
   };
 
-  // Eliminar curso
+  /**
+   * Elimina un curso por su ID
+   * @param id - ID del curso a eliminar
+   */
   const eliminarCurso = async (id: number) => {
     if (!window.confirm("¿Seguro que deseas eliminar este curso?")) return;
     try {
@@ -79,12 +116,26 @@ function AdminDashboard() {
     }
   };
 
-  // Abrir modal de edición
-  const abrirModalEditar = (curso: Curso) => {
-    setCursoEditando(curso);
+  /**
+   * Abre el modal de edición y carga el curso completo con sus secciones
+   * @param curso - Curso base que se quiere editar
+   */
+  const abrirModalEditar = async (curso: Curso) => {
+    try {
+      const res = await axios.get(`http://localhost:4000/cursos/completo/${curso.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Curso con secciones:", res.data);
+      setCursoEditando(res.data);
+    } catch (error) {
+      console.error("Error al cargar curso con secciones:", error);
+      alert("No se pudo cargar la información completa del curso");
+    }
   };
 
-  // Guardar edición
+  /**
+   * Guarda los cambios realizados a un curso (título, descripción)
+   */
   const guardarCambios = async () => {
     if (!cursoEditando) return;
 
@@ -98,24 +149,23 @@ function AdminDashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setCursos(
-        cursos.map((c) =>
-          c.id === cursoEditando.id ? cursoEditando : c
-        )
-      );
+      alert("✅ Curso actualizado correctamente");
       setCursoEditando(null);
+      fetchCursos(); // Recarga la lista de cursos
     } catch (error) {
-      alert("Error al actualizar curso");
+      console.error("Error al actualizar curso:", error);
+      alert("❌ No se pudo actualizar el curso");
     }
   };
 
   return (
     <div className="container mt-5">
+      {/* === Título del panel === */}
       <h1 className="text-center mb-4 fw-bold">
         <i className="bi bi-speedometer2 me-2"></i>Panel de Administración
       </h1>
 
-      {/* Estadísticas */}
+      {/* === Sección de estadísticas === */}
       <div className="row text-center mb-5">
         {[
           { label: "Cursos", icon: "bi-book-half", color: "primary", value: stats.cursos },
@@ -136,41 +186,17 @@ function AdminDashboard() {
         ))}
       </div>
 
-      {/* Crear curso */}
+      {/* === Crear nuevo curso === */}
       <div className="card shadow-sm mb-5">
         <div className="card-header bg-primary text-white fw-bold">
-          <i className="bi bi-plus-circle me-2"></i>Crear Curso
+          <i className="bi bi-plus-circle me-2"></i>Crear nuevo curso
         </div>
         <div className="card-body">
-          <form className="row g-3" onSubmit={crearCurso}>
-            <div className="col-md-5">
-              <input
-                type="text"
-                placeholder="Título del curso"
-                className="form-control"
-                value={nuevoCurso.titulo}
-                onChange={(e) => setNuevoCurso({ ...nuevoCurso, titulo: e.target.value })}
-              />
-            </div>
-            <div className="col-md-5">
-              <input
-                type="text"
-                placeholder="Descripción"
-                className="form-control"
-                value={nuevoCurso.descripcion}
-                onChange={(e) => setNuevoCurso({ ...nuevoCurso, descripcion: e.target.value })}
-              />
-            </div>
-            <div className="col-md-2 text-end">
-              <button className="btn btn-success w-100" type="submit">
-                Crear
-              </button>
-            </div>
-          </form>
+          <CrearCursoForm onCursoCreado={fetchCursos} />
         </div>
       </div>
 
-      {/* Lista de cursos */}
+      {/* === Lista de cursos === */}
       <div className="card shadow-sm mb-5">
         <div className="card-header bg-dark text-white fw-bold">
           <i className="bi bi-journal-text me-2"></i>Lista de Cursos
@@ -216,7 +242,7 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Modal editar curso */}
+      {/* === Modal para editar curso === */}
       {cursoEditando && (
         <div
           className="modal fade show d-block"
@@ -225,6 +251,7 @@ function AdminDashboard() {
         >
           <div className="modal-dialog">
             <div className="modal-content">
+              {/* Encabezado del modal */}
               <div className="modal-header">
                 <h5 className="modal-title">
                   <i className="bi bi-pencil-square me-2"></i>Editar Curso
@@ -234,7 +261,10 @@ function AdminDashboard() {
                   onClick={() => setCursoEditando(null)}
                 ></button>
               </div>
+
+              {/* Cuerpo del modal */}
               <div className="modal-body">
+                {/* Campos principales */}
                 <input
                   type="text"
                   className="form-control mb-3"
@@ -254,7 +284,40 @@ function AdminDashboard() {
                     })
                   }
                 ></textarea>
+
+                {/* Secciones del curso (si existen) */}
+                {cursoEditando?.secciones && cursoEditando.secciones.length > 0 && (
+                  <div className="mt-3">
+                    <h6 className="fw-bold">Secciones</h6>
+                    {cursoEditando.secciones.map((sec, index) => (
+                      <div key={index} className="border rounded p-2 mb-2 bg-light">
+                        <input
+                          type="text"
+                          className="form-control mb-2"
+                          value={sec.subtitulo}
+                          onChange={(e) => {
+                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            nuevasSecciones[index].subtitulo = e.target.value;
+                            setCursoEditando({ ...cursoEditando!, secciones: nuevasSecciones } as Curso);
+                          }}
+                        />
+                        <textarea
+                          className="form-control"
+                          rows={2}
+                          value={sec.descripcion}
+                          onChange={(e) => {
+                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            nuevasSecciones[index].descripcion = e.target.value;
+                            setCursoEditando({ ...cursoEditando!, secciones: nuevasSecciones } as Curso);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Footer del modal */}
               <div className="modal-footer">
                 <button
                   className="btn btn-secondary"

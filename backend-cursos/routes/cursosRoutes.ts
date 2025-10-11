@@ -1,23 +1,58 @@
-import express from "express";
-import {
-  crearCurso,
-  listarCursos,
-  obtenerCurso,
-  actualizarCurso,
-  eliminarCurso,
-  inscribirEnCurso,
-  misCursos,
-} from "../controllers/cursosController.js";
-import { verificarToken, soloAdmin } from "../middlewares/auth.js";
+  import express from "express";
+  import {
+    crearCurso,
+    listarCursos,
+    obtenerCurso,
+    actualizarCurso,
+    eliminarCurso,
+    inscribirEnCurso,
+    misCursos,
+    crearCursoConSecciones,
+    obtenerCursoCompleto,
+    upload,
+  } from "../controllers/cursosController.js";
+  import { verificarToken, soloAdmin } from "../middlewares/auth.js";
 
-const router = express.Router();
+  const router = express.Router();
 
-router.get("/", listarCursos);
-router.get("/:id", obtenerCurso);
-router.get("/mis-cursos", verificarToken, misCursos);
-router.post("/:id/inscribirse", verificarToken, inscribirEnCurso);
-router.post("/", verificarToken, soloAdmin, crearCurso);
-router.put("/:id", verificarToken, soloAdmin, actualizarCurso);
-router.delete("/:id", verificarToken, soloAdmin, eliminarCurso);
+  /* ======================================================
+    📘 Rutas de gestión de cursos
+  ====================================================== */
 
-export default router;
+  // ✅ Crear curso con secciones y archivos (solo admin)
+  router.post(
+    "/crear-con-secciones",
+    verificarToken,
+    soloAdmin,
+    upload.any(),
+    crearCursoConSecciones
+  );
+
+
+  // ✅ Listar todos los cursos
+  router.get("/", listarCursos);
+
+  // ✅ Obtener un curso por su ID
+  router.get("/:id", obtenerCurso);
+
+  // ✅ Obtener cursos del usuario autenticado
+  router.get("/mis-cursos", verificarToken, misCursos);
+
+  // ✅ Inscribirse en un curso
+  router.post("/:id/inscribirse", verificarToken, inscribirEnCurso);
+
+  // ✅ Crear curso simple (sin secciones ni archivos)
+  router.post("/", verificarToken, soloAdmin, crearCurso);
+
+  // ✅ Actualizar un curso
+  router.put("/:id", verificarToken, soloAdmin, actualizarCurso);
+
+  // ✅ Eliminar un curso
+  router.delete("/:id", verificarToken, soloAdmin, eliminarCurso);
+
+
+  router.get("/completo/:id", verificarToken, obtenerCursoCompleto);
+  /* ======================================================
+    📤 Exportación del router
+  ====================================================== */
+  export default router;

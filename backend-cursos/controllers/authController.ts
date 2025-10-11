@@ -7,6 +7,7 @@ import { RowDataPacket } from "mysql2";
 
 dotenv.config();
 
+// Define la estructura esperada del usuario en la base de datos
 interface Usuario extends RowDataPacket {
   id: number;
   nombre: string;
@@ -15,10 +16,17 @@ interface Usuario extends RowDataPacket {
   rol: string;
 }
 
+/**
+ * Controlador para registrar un nuevo usuario.
+ * - Verifica si el email ya existe.
+ * - Cifra la contraseña con bcrypt.
+ * - Inserta el nuevo usuario en la base de datos.
+ */
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { nombre, email, password, rol } = req.body;
 
+    // Verifica si el usuario ya existe
     const [rows] = await pool.query<Usuario[]>(
       "SELECT * FROM usuarios WHERE email = ?",
       [email]
@@ -29,8 +37,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Cifra la contraseña antes de guardarla
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Inserta el nuevo usuario en la tabla
     await pool.query(
       "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)",
       [nombre, email, hashedPassword, rol || "estudiante"]
@@ -45,10 +55,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+/**
+ * Controlador para iniciar sesión.
+ * - Verifica si el usuario existe.
+ * - Valida la contraseña con bcrypt.
+ * - Genera un token JWT con expiración de 8 horas.
+ */
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   try {
+    // Busca el usuario por su correo
     const [rows] = await pool.query<Usuario[]>(
       "SELECT * FROM usuarios WHERE email = ?",
       [email]
@@ -60,6 +77,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     const usuario = rows[0];
+
+    // Compara la contraseña ingresada con la almacenada
     const esValida = await bcrypt.compare(password, usuario.password);
 
     if (!esValida) {
@@ -67,6 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Genera el token JWT
     const token = jwt.sign(
       { id: usuario.id, rol: usuario.rol },
       process.env.JWT_SECRET as string,

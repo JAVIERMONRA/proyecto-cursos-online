@@ -5,5 +5,8 @@
   "scripts": {
     "backend": "cd backend-cursos && npm run dev",
     "frontend": "cd frontend-cursos && npm start"
+  },
+  "dependencies": {
+    "react-feather": "^2.0.10"
   }
 }

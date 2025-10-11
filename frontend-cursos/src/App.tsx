@@ -1,13 +1,14 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ReactElement } from "react";
 import Navbar from "./components/Navbar";
-import Cursos from "./pages/Cursos";
-import MisCursos from "./pages/MisCursos";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminCursos from "./pages/AdminCursos";
 import AdminDashboard from "./pages/AdminDashboard";
+import InicioRedirect from "./pages/InicioRedirect";
+import AdminCrearCurso from "./pages/AdminCrearCurso";
 
 interface RutaAdminProps {
   children: ReactElement;
@@ -27,19 +28,24 @@ const App: React.FC = () => {
     <Router>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Cursos />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Página de inicio: redirige según rol */}
+        <Route path="/" element={<InicioRedirect />} />
 
+        {/* Estudiante: Dashboard (cursos) */}
         <Route
-          path="/mis-cursos"
+          path="/dashboard"
           element={
             <ProtectedRoute>
-              <MisCursos />
+              <Dashboard />
             </ProtectedRoute>
           }
         />
 
+        {/* Autenticación */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Rutas de administrador */}
         <Route
           path="/admin/cursos"
           element={
@@ -48,7 +54,6 @@ const App: React.FC = () => {
             </RutaAdmin>
           }
         />
-
         <Route
           path="/admin/dashboard"
           element={
@@ -61,5 +66,13 @@ const App: React.FC = () => {
     </Router>
   );
 };
+        <Route
+         path="/admin/crear-curso"
+         element={
+          <RutaAdmin>
+           <AdminCrearCurso />
+         </RutaAdmin>
+  }
+/>
 
 export default App;

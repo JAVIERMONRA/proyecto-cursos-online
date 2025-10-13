@@ -1,56 +1,46 @@
-/**
- * Componente: AdminCursos
- * ----------------------------------------------------
- * Este componente permite al administrador gestionar cursos:
- * - Crear nuevos cursos
- * - Editar cursos existentes
- * - Eliminar cursos
- * - Listar todos los cursos registrados
- * 
- * Se conecta con un backend mediante Axios y utiliza un token JWT
- * almacenado en localStorage para la autenticación.
- */
-
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import DashboardLayout from "../components/DashboardLayout";
+import { 
+  BookOpen,
+  Edit,
+  Trash2,
+  Eye,
+  Search
+} from "lucide-react";
+import "./AdminDashboard.css";
 
-/** 
- * Interfaz que define la estructura de un curso 
- */
+interface Seccion {
+  id: number;
+  subtitulo: string;
+  descripcion: string;
+}
+
 interface Curso {
   id: number;
   titulo: string;
   descripcion: string;
-  profesorId?: number;
+  secciones?: Seccion[];
 }
 
-/**
- * Componente principal para la gestión de cursos por el administrador
- */
 function AdminCursos() {
-  /** Lista de cursos cargados desde el backend */
   const [cursos, setCursos] = useState<Curso[]>([]);
-
-  /** Datos del nuevo curso que se va a crear */
-  const [nuevoCurso, setNuevoCurso] = useState({ titulo: "", descripcion: "" });
-
-  /** Curso actualmente en modo edición */
-  const [editando, setEditando] = useState<Curso | null>(null);
-
-  /** Estado de carga para mostrar mensajes mientras se obtienen datos */
+  const [cursoEditando, setCursoEditando] = useState<Curso | null>(null);
   const [loading, setLoading] = useState(true);
-
-  /** Token y rol del usuario autenticado (almacenados en localStorage) */
+  const [busqueda, setBusqueda] = useState("");
+  
   const token = localStorage.getItem("token");
-  const rol = localStorage.getItem("rol");
 
-  /**
-   * Función que obtiene todos los cursos desde el servidor
-   */
+  useEffect(() => {
+    fetchCursos();
+  }, []);
+
   const fetchCursos = async () => {
     try {
-      const res = await axios.get<Curso[]>("http://localhost:4000/cursos");
-      setCursos(res.data);
+      const response = await axios.get("http://localhost:4000/cursos", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCursos(response.data);
     } catch (error) {
       console.error("Error al cargar cursos:", error);
     } finally {
@@ -58,139 +48,272 @@ function AdminCursos() {
     }
   };
 
-  /** Carga inicial de los cursos al montar el componente */
-  useEffect(() => {
-    fetchCursos();
-  }, []);
-
-  /**
-   * Maneja la creación de un nuevo curso
-   * @param e Evento del formulario de creación
-   */
-  const handleCrear = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      await axios.post("http://localhost:4000/cursos", nuevoCurso, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      alert("Curso creado ✅");
-      setNuevoCurso({ titulo: "", descripcion: "" });
-      fetchCursos();
-    } catch (error) {
-      console.error("Error al crear curso:", error);
-      alert("Error al crear el curso");
-    }
-  };
-
-  /**
-   * Maneja la eliminación de un curso por su ID
-   * @param id ID del curso a eliminar
-   */
-  const handleEliminar = async (id: number) => {
+  const eliminarCurso = async (id: number) => {
     if (!window.confirm("¿Seguro que deseas eliminar este curso?")) return;
+    
     try {
       await axios.delete(`http://localhost:4000/cursos/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("Curso eliminado 🗑️");
-      fetchCursos();
+      setCursos(cursos.filter((c) => c.id !== id));
+      alert("✅ Curso eliminado correctamente");
     } catch (error) {
-      console.error("Error al eliminar curso:", error);
+      alert("❌ Error al eliminar curso");
     }
   };
 
-  /**
-   * Maneja la actualización (edición) de un curso existente
-   * @param e Evento del formulario de edición
-   */
-  const handleEditar = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!editando) return;
-
+  const abrirModalEditar = async (curso: Curso) => {
     try {
-      await axios.put(`http://localhost:4000/cursos/${editando.id}`, editando, {
+      const res = await axios.get(`http://localhost:4000/cursos/completo/${curso.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("Curso actualizado ✏️");
-      setEditando(null);
+      setCursoEditando(res.data);
+    } catch (error) {
+      console.error("Error al cargar curso con secciones:", error);
+      alert("No se pudo cargar la información completa del curso");
+    }
+  };
+
+  const guardarCambios = async () => {
+    if (!cursoEditando) return;
+
+    try {
+      await axios.put(
+        `http://localhost:4000/cursos/${cursoEditando.id}`,
+        {
+          titulo: cursoEditando.titulo,
+          descripcion: cursoEditando.descripcion,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert("✅ Curso actualizado correctamente");
+      setCursoEditando(null);
       fetchCursos();
     } catch (error) {
       console.error("Error al actualizar curso:", error);
+      alert("❌ No se pudo actualizar el curso");
     }
   };
 
-  /** Si el usuario no es administrador, se bloquea el acceso */
-  if (rol !== "admin") {
-    return <p style={{ color: "red" }}>Acceso denegado. Solo para administradores.</p>;
+  const cursosFiltrados = cursos.filter(
+    (curso) =>
+      curso.titulo.toLowerCase().includes(busqueda.toLowerCase()) ||
+      curso.descripcion.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <DashboardLayout rol="admin">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Cargando cursos...</p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
-  /** Mostrar mensaje de carga mientras se obtienen los cursos */
-  if (loading) return <p>Cargando cursos...</p>;
-
   return (
-    <div style={{ padding: "20px", marginTop: "80px" }}>
-      <h1>Panel de Administración</h1>
+    <DashboardLayout rol="admin">
+      <div className="admin-dashboard">
+        {/* Header */}
+        <div className="dashboard-header">
+          <div>
+            <h1 className="dashboard-title">📚 Gestión de Cursos</h1>
+            <p className="dashboard-subtitle">Administra todos los cursos de la plataforma</p>
+          </div>
+        </div>
 
-      {/* === Formulario para crear nuevo curso === */}
-      <form onSubmit={handleCrear} style={{ marginBottom: "20px" }}>
-        <h3>Crear nuevo curso</h3>
-        <input
-          type="text"
-          placeholder="Título"
-          value={nuevoCurso.titulo}
-          onChange={(e) => setNuevoCurso({ ...nuevoCurso, titulo: e.target.value })}
-          required
-        />
-        <br />
-        <textarea
-          placeholder="Descripción"
-          value={nuevoCurso.descripcion}
-          onChange={(e) => setNuevoCurso({ ...nuevoCurso, descripcion: e.target.value })}
-          required
-        />
-        <br />
-        <button type="submit">Crear curso</button>
-      </form>
+        {/* Estadísticas rápidas */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+              <BookOpen size={28} />
+            </div>
+            <div className="stat-content">
+              <p className="stat-label">Total de Cursos</p>
+              <p className="stat-value">{cursos.length}</p>
+            </div>
+          </div>
+        </div>
 
-      {/* === Listado de cursos existentes === */}
-      <h3>Cursos existentes</h3>
-      {cursos.length === 0 ? (
-        <p>No hay cursos registrados</p>
-      ) : (
-        <ul>
-          {cursos.map((curso) => (
-            <li key={curso.id}>
-              {/* Si el curso está en modo edición, muestra formulario */}
-              {editando?.id === curso.id ? (
-                <form onSubmit={handleEditar}>
+        {/* Tabla de Cursos */}
+        <div className="table-section">
+          <div className="table-header">
+            <h2 className="section-title">Lista de Cursos</h2>
+            <div className="search-box">
+              <Search size={20} className="search-icon" />
+              <input
+                type="text"
+                className="table-search"
+                placeholder="Buscar cursos..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Título del Curso</th>
+                  <th>Descripción</th>
+                  <th>Estado</th>
+                  <th className="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cursosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center">
+                      <div className="empty-state">
+                        <BookOpen size={48} />
+                        <p>No hay cursos disponibles</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  cursosFiltrados.map((curso) => (
+                    <tr key={curso.id}>
+                      <td>#{curso.id}</td>
+                      <td>
+                        <div className="curso-info">
+                          <span className="curso-titulo">{curso.titulo}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="curso-descripcion">
+                          {curso.descripcion.length > 80 
+                            ? `${curso.descripcion.substring(0, 80)}...` 
+                            : curso.descripcion}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge badge-active">Activo</span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="btn-action btn-edit"
+                            onClick={() => abrirModalEditar(curso)}
+                            title="Editar"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            className="btn-action btn-delete"
+                            onClick={() => eliminarCurso(curso.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Modal de Edición */}
+        {cursoEditando && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3>✏️ Editar Curso</h3>
+                <button 
+                  className="modal-close"
+                  onClick={() => setCursoEditando(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Título del curso</label>
                   <input
                     type="text"
-                    value={editando.titulo}
-                    onChange={(e) => setEditando({ ...editando, titulo: e.target.value })}
-                    required
+                    className="form-input"
+                    value={cursoEditando.titulo}
+                    onChange={(e) =>
+                      setCursoEditando({ ...cursoEditando, titulo: e.target.value })
+                    }
                   />
+                </div>
+
+                <div className="form-group">
+                  <label>Descripción</label>
                   <textarea
-                    value={editando.descripcion}
-                    onChange={(e) => setEditando({ ...editando, descripcion: e.target.value })}
-                    required
+                    className="form-textarea"
+                    rows={4}
+                    value={cursoEditando.descripcion}
+                    onChange={(e) =>
+                      setCursoEditando({
+                        ...cursoEditando,
+                        descripcion: e.target.value,
+                      })
+                    }
                   />
-                  <button type="submit">Guardar</button>
-                  <button type="button" onClick={() => setEditando(null)}>
-                    Cancelar
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <strong>{curso.titulo}</strong> - {curso.descripcion}
-                  <button onClick={() => setEditando(curso)}>Editar</button>
-                  <button onClick={() => handleEliminar(curso.id)}>Eliminar</button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+                </div>
+
+                {cursoEditando?.secciones && cursoEditando.secciones.length > 0 && (
+                  <div className="form-group">
+                    <label>Secciones del Curso</label>
+                    {cursoEditando.secciones.map((sec, index) => (
+                      <div key={index} className="seccion-item">
+                        <input
+                          type="text"
+                          className="form-input mb-2"
+                          value={sec.subtitulo}
+                          onChange={(e) => {
+                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            nuevasSecciones[index].subtitulo = e.target.value;
+                            setCursoEditando({ 
+                              ...cursoEditando!, 
+                              secciones: nuevasSecciones 
+                            } as Curso);
+                          }}
+                        />
+                        <textarea
+                          className="form-textarea"
+                          rows={2}
+                          value={sec.descripcion}
+                          onChange={(e) => {
+                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            nuevasSecciones[index].descripcion = e.target.value;
+                            setCursoEditando({ 
+                              ...cursoEditando!, 
+                              secciones: nuevasSecciones 
+                            } as Curso);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  className="btn-cancel"
+                  onClick={() => setCursoEditando(null)}
+                >
+                  Cancelar
+                </button>
+                <button className="btn-save" onClick={guardarCambios}>
+                  💾 Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
 

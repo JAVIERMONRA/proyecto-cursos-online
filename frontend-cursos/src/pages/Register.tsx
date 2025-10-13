@@ -1,129 +1,205 @@
 import { useState, FormEvent, ChangeEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { UserPlus, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import "./Auth.css";
 
-/**
- * 📘 Interface RegisterResponse
- * Define el tipo de respuesta esperada desde el backend tras un registro.
- */
 interface RegisterResponse {
-  message?: string; // Mensaje opcional de éxito
-  error?: string;   // Mensaje de error (si ocurre)
+  message?: string;
+  error?: string;
 }
 
-/**
- * 📗 Tipo RolType
- * Define los roles posibles que puede tener un usuario en la aplicación.
- */
 type RolType = "estudiante" | "admin";
 
-/**
- * 🧩 Componente: Register
- * Formulario de registro de usuario (nombre, correo, contraseña y rol).
- * Envía los datos al backend y redirige al login tras un registro exitoso.
- */
 function Register() {
-  /** 🧠 Estados del formulario */
-  const [nombre, setNombre] = useState<string>("");      // Nombre del usuario
-  const [email, setEmail] = useState<string>("");        // Correo electrónico
-  const [password, setPassword] = useState<string>("");  // Contraseña
-  const [rol, setRol] = useState<RolType>("estudiante"); // Rol seleccionado (por defecto: estudiante)
+  const [nombre, setNombre] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [rol, setRol] = useState<RolType>("estudiante");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
-  /** 🧭 Hook de navegación para redirigir al login tras el registro */
   const navigate = useNavigate();
 
-  /**
-   * 📝 handleSubmit:
-   * Maneja el envío del formulario de registro.
-   * Envía los datos al backend (`/auth/register`) y maneja las respuestas.
-   */
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault(); // Previene el comportamiento por defecto del formulario
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      // 🔹 Envío de datos al backend
       const res = await fetch("http://localhost:4000/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, email, password, rol }),
       });
 
-      // 📩 Se obtiene la respuesta en formato JSON
       const data: RegisterResponse = await res.json();
 
-      // ✅ Si el registro fue exitoso
       if (res.ok) {
-        alert("Usuario registrado con éxito");
-        navigate("/login"); // Redirige al login
+        alert("✅ Usuario registrado con éxito");
+        navigate("/login");
       } else {
-        // ❌ Si hay error del servidor o validación
-        alert(data.error || "Error en el registro");
+        setError(data.error || "Error en el registro");
       }
     } catch (error) {
-      // 🚨 Manejo de errores de conexión
-      alert("Error de conexión con el servidor");
-      console.error("Error en registro:", error);
+      setError("Error de conexión con el servidor");
+    } finally {
+      setLoading(false);
     }
   };
 
-  /**
-   * 🧱 Renderizado del formulario de registro
-   * Incluye campos de nombre, correo, contraseña y rol.
-   */
   return (
-    <div className="container mt-5" style={{ maxWidth: 400 }}>
-      <h3 className="text-center mb-4">Registro</h3>
-      <form onSubmit={handleSubmit}>
-        {/* Campo de nombre */}
-        <div className="mb-3">
-          <label>Nombre</label>
-          <input
-            className="form-control"
-            value={nombre}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setNombre(e.target.value)}
-            required
-          />
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-icon">
+            <UserPlus size={32} />
+          </div>
+          <h2 className="auth-title">Crear Cuenta</h2>
+          <p className="auth-subtitle">Regístrate para comenzar a aprender</p>
         </div>
 
-        {/* Campo de correo electrónico */}
-        <div className="mb-3">
-          <label>Email</label>
-          <input
-            type="email"
-            className="form-control"
-            value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        {error && (
+          <div className="alert alert-error">
+            <span>{error}</span>
+          </div>
+        )}
 
-        {/* Campo de contraseña */}
-        <div className="mb-3">
-          <label>Contraseña</label>
-          <input
-            type="password"
-            className="form-control"
-            value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label className="form-label">Nombre Completo</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Juan Pérez"
+              value={nombre}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNombre(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
 
-        {/* Selección de rol */}
-        <div className="mb-3">
-          <label>Rol</label>
-          <select
-            className="form-select"
-            value={rol}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setRol(e.target.value as RolType)}
+          <div className="form-group">
+            <label className="form-label">Correo Electrónico</label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Contraseña</label>
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="form-input"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Confirmar Contraseña</label>
+            <div className="password-input-wrapper">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                className="form-input"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Tipo de Cuenta</label>
+            <div className="role-selector">
+              <button
+                type="button"
+                className={`role-option ${rol === "estudiante" ? "active" : ""}`}
+                onClick={() => setRol("estudiante")}
+                disabled={loading}
+              >
+                <div className="role-icon">👨‍🎓</div>
+                <span>Estudiante</span>
+              </button>
+              <button
+                type="button"
+                className={`role-option ${rol === "admin" ? "active" : ""}`}
+                onClick={() => setRol("admin")}
+                disabled={loading}
+              >
+                <div className="role-icon">👨‍💼</div>
+                <span>Administrador</span>
+              </button>
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            className="btn-submit"
+            disabled={loading}
           >
-            <option value="estudiante">Estudiante</option>
-            <option value="admin">Administrador</option>
-          </select>
-        </div>
+            {loading ? (
+              <>
+                <div className="spinner-small"></div>
+                Creando cuenta...
+              </>
+            ) : (
+              <>
+                <UserPlus size={20} />
+                Crear Cuenta
+              </>
+            )}
+          </button>
+        </form>
 
-        {/* Botón de envío */}
-        <button className="btn btn-primary w-100">Registrarse</button>
-      </form>
+        <div className="auth-footer">
+          <p>
+            ¿Ya tienes cuenta? 
+            <Link to="/login" className="auth-link">Inicia sesión aquí</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

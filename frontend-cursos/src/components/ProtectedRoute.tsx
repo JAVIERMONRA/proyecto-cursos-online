@@ -1,27 +1,18 @@
-import React from "react";
+import { ReactElement } from "react";
 import { Navigate } from "react-router-dom";
 
-/**
- * Componente ProtectedRoute
- * 
- * Protege las rutas que requieren autenticación.
- * 
- * 🔹 Verifica si existe un token en `localStorage`.  
- * 🔹 Si no hay token, redirige al usuario hacia la página de inicio de sesión (`/login`).  
- * 🔹 Si el usuario está autenticado, renderiza el contenido hijo (`children`).  
- */
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactElement;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+function ProtectedRoute({ children }: ProtectedRouteProps): ReactElement {
   const token = localStorage.getItem("token");
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
-};
+  return children;
+}
 
 export default ProtectedRoute;

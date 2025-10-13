@@ -1,12 +1,18 @@
+-- ============================================
 -- SCRIPT COMPLETO BASE DE DATOS
 -- Plataforma de Cursos Online
+-- ============================================
 
+-- ============================================
 -- 1. CREAR LA BASE DE DATOS
+-- ============================================
 DROP DATABASE IF EXISTS plataforma_cursos;
 CREATE DATABASE plataforma_cursos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE plataforma_cursos;
 
---  2. TABLA DE USUARIOS
+-- ============================================
+-- 2. TABLA DE USUARIOS
+-- ============================================
 CREATE TABLE usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -19,7 +25,9 @@ CREATE TABLE usuarios (
   INDEX idx_rol (rol)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================
 -- 3. TABLA DE CURSOS
+-- ============================================
 CREATE TABLE cursos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(200) NOT NULL,
@@ -31,7 +39,9 @@ CREATE TABLE cursos (
   INDEX idx_profesorId (profesorId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================
 -- 4. TABLA DE SECCIONES DE CURSOS
+-- ============================================
 CREATE TABLE curso_secciones (
   id INT AUTO_INCREMENT PRIMARY KEY,
   cursoId INT NOT NULL,
@@ -43,7 +53,9 @@ CREATE TABLE curso_secciones (
   INDEX idx_cursoId (cursoId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---5. TABLA DE ARCHIVOS DE SECCIONES
+-- ============================================
+-- 5. TABLA DE ARCHIVOS DE SECCIONES
+-- ============================================
 CREATE TABLE seccion_archivos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   seccionId INT NOT NULL,
@@ -56,7 +68,9 @@ CREATE TABLE seccion_archivos (
   INDEX idx_seccionId (seccionId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---  6. TABLA DE INSCRIPCIONES
+-- ============================================
+-- 6. TABLA DE INSCRIPCIONES
+-- ============================================
 CREATE TABLE inscripciones (
   id INT AUTO_INCREMENT PRIMARY KEY,
   usuarioId INT NOT NULL,
@@ -71,7 +85,9 @@ CREATE TABLE inscripciones (
   INDEX idx_cursoId (cursoId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---  7. DATOS DE PRUEBA
+-- ============================================
+-- 7. DATOS DE PRUEBA
+-- ============================================
 
 -- Insertar usuario administrador
 -- Password: admin123 (hasheado con bcrypt)
@@ -113,7 +129,10 @@ INSERT INTO inscripciones (usuarioId, cursoId, progreso) VALUES
 (2, 2, 50.00),
 (3, 1, 10.00);
 
+-- ============================================
 -- 8. VERIFICACIÓN
+-- ============================================
+
 -- Ver todos los usuarios
 SELECT id, nombre, email, rol FROM usuarios;
 
@@ -132,7 +151,9 @@ FROM inscripciones i
 JOIN usuarios u ON i.usuarioId = u.id
 JOIN cursos c ON i.cursoId = c.id;
 
+-- ============================================
 -- 9. INFORMACIÓN DE CREDENCIALES
+-- ============================================
 
 /*
 CREDENCIALES DE ACCESO:

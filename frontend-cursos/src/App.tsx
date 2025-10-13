@@ -1,78 +1,135 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { ReactElement } from "react";
-import Navbar from "./components/Navbar";
-import Dashboard from "./pages/Dashboard";
+import { useAuth } from "./context/AuthContext"; 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminCursos from "./pages/AdminCursos";
 import AdminDashboard from "./pages/AdminDashboard";
-import InicioRedirect from "./pages/InicioRedirect";
 import AdminCrearCurso from "./pages/AdminCrearCurso";
+import MisCursos from "./pages/MisCursos";
+import ExplorarCursos from "./pages/ExplorarCursos";
+import Perfil from "./pages/Perfil";
+import Home from "./pages/Home";
+import Navbar from "./components/Navbar";
 
 interface RutaAdminProps {
   children: ReactElement;
 }
 
 function RutaAdmin({ children }: RutaAdminProps): ReactElement {
-  const token = localStorage.getItem("token");
-  const rol = localStorage.getItem("rol");
+  const { user } = useAuth();
 
-  if (!token) return <Navigate to="/login" replace />;
-  if (rol !== "admin") return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "admin") return <Navigate to="/mis-cursos" replace />;
+
   return children;
 }
 
 const App: React.FC = () => {
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+
   return (
     <Router>
-      <Navbar />
-      <Routes>
-        {/* Página de inicio: redirige según rol */}
-        <Route path="/" element={<InicioRedirect />} />
+      {/* Navbar solo se muestra si NO está autenticado */}
+      {!isAuthenticated && <Navbar />}
 
-        {/* Estudiante: Dashboard (cursos) */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+      {/* Padding solo para páginas públicas */}
+      <div style={{ paddingTop: !isAuthenticated ? "70px" : "0" }}>
+        <Routes>
+          {/* ========== RUTAS PÚBLICAS ========== */}
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Autenticación */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+          {/* ========== RUTAS DE ESTUDIANTE ========== */}
+          <Route
+            path="/mis-cursos"
+            element={
+              <ProtectedRoute>
+                <MisCursos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/explorar"
+            element={
+              <ProtectedRoute>
+                <ExplorarCursos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <Perfil />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Rutas de administrador */}
-        <Route
-          path="/admin/cursos"
-          element={
-            <RutaAdmin>
-              <AdminCursos />
-            </RutaAdmin>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <RutaAdmin>
-              <AdminDashboard />
-            </RutaAdmin>
-          }
-        />
-      </Routes>
+          {/* ========== RUTAS DE ADMIN ========== */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <RutaAdmin>
+                <AdminDashboard />
+              </RutaAdmin>
+            }
+          />
+          <Route
+            path="/admin/cursos"
+            element={
+              <RutaAdmin>
+                <AdminCursos />
+              </RutaAdmin>
+            }
+          />
+          <Route
+            path="/admin/crear-curso"
+            element={
+              <RutaAdmin>
+                <AdminCrearCurso />
+              </RutaAdmin>
+            }
+          />
+          <Route
+            path="/admin/estadisticas"
+            element={
+              <RutaAdmin>
+                <AdminDashboard />
+              </RutaAdmin>
+            }
+          />
+          <Route
+            path="/admin/usuarios"
+            element={
+              <RutaAdmin>
+                <AdminDashboard />
+              </RutaAdmin>
+            }
+          />
+
+          {/* Ruta 404 - Redirige según el rol */}
+          <Route
+            path="*"
+            element={
+              isAuthenticated ? (
+                user?.role === "admin" ? (
+                  <Navigate to="/admin/dashboard" replace />
+                ) : (
+                  <Navigate to="/mis-cursos" replace />
+                )
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+        </Routes>
+      </div>
     </Router>
   );
 };
-        <Route
-         path="/admin/crear-curso"
-         element={
-          <RutaAdmin>
-           <AdminCrearCurso />
-         </RutaAdmin>
-  }
-/>
 
 export default App;

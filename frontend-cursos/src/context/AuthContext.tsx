@@ -1,56 +1,32 @@
-import React, { createContext, useState, useEffect, ReactNode } from "react";
-
-/**
- * Contexto de Autenticación (AuthContext)
- * 
- * Este contexto centraliza la gestión del estado de autenticación en la aplicación.
- * Permite compartir la información del usuario (rol, sesión activa) entre componentes.
- * 
- * Funcionalidades principales:
- * 🔹 `login(token, rol)` — Guarda el token y rol en `localStorage` y actualiza el estado global.  
- * 🔹 `logout()` — Elimina los datos de sesión del almacenamiento local y limpia el estado.  
- * 🔹 Se inicializa verificando si ya existe una sesión previa almacenada.  
- */
-
-interface User {
-  rol: string;
-}
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 interface AuthContextType {
-  user: User | null;
-  login: (token: string, rol: string) => void;
+  user: { token: string; role: string } | null;
+  login: (token: string, role: string) => void;
   logout: () => void;
 }
 
-// Contexto por defecto (sin sesión)
-export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  login: () => {},
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Proveedor de autenticación
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<{ token: string; role: string } | null>(null);
 
-  // 🔹 Verifica sesión almacenada en localStorage
+  // Mantener sesión al recargar
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const rol = localStorage.getItem("rol");
-    if (token && rol) setUser({ rol });
+    const role = localStorage.getItem("role");
+    if (token && role) setUser({ token, role });
   }, []);
 
-  // 🔹 Inicia sesión y almacena datos
-  const login = (token: string, rol: string) => {
+  const login = (token: string, role: string) => {
     localStorage.setItem("token", token);
-    localStorage.setItem("rol", rol);
-    setUser({ rol });
+    localStorage.setItem("role", role);
+    setUser({ token, role });
   };
 
-  // 🔹 Cierra sesión y limpia almacenamiento
   const logout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("rol");
+    localStorage.removeItem("role");
     setUser(null);
   };
 
@@ -59,4 +35,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth debe usarse dentro de un AuthProvider");
+  return context;
 };

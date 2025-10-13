@@ -1,112 +1,173 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import DashboardLayout from "../components/DashboardLayout";
+import { BookOpen, Clock, Award, TrendingUp, AlertCircle } from "lucide-react";
+import "./MisCursos.css";
 
-/**
- * 📘 Interface Curso
- * Define la estructura de un curso que el estudiante tiene inscrito.
- */
 interface Curso {
-  id: number;          // Identificador único del curso
-  titulo: string;      // Título del curso
-  descripcion: string; // Breve descripción del curso
+  id: number;
+  titulo: string;
+  descripcion: string;
 }
 
-/**
- * 🎓 Componente: MisCursos
- * Muestra los cursos en los que el estudiante está inscrito.
- * Permite además desinscribirse de cualquiera de ellos.
- */
 function MisCursos() {
-  /** 🧩 Estado para almacenar los cursos del estudiante */
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  /** 🔐 Token del usuario almacenado en localStorage */
   const token = localStorage.getItem("token");
 
-  /**
-   * 📦 useEffect:
-   * Al cargar el componente, obtiene los cursos inscritos del estudiante
-   * desde la API `/inscripciones/mis-cursos`, utilizando el token para autenticación.
-   */
   useEffect(() => {
-    // Si no hay token, no intenta cargar los cursos
     if (!token) return;
     
     const fetchMisCursos = async () => {
       try {
-        // 🔹 Petición GET al backend con encabezado de autorización
         const res = await axios.get<Curso[]>(
           "http://localhost:4000/inscripciones/mis-cursos",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-
-        // ✅ Actualiza el estado con los cursos recibidos
         setCursos(res.data);
       } catch (err) {
         console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchMisCursos();
   }, [token]);
 
-  /**
-   * ❌ handleDesinscribirse:
-   * Permite al usuario eliminar su inscripción en un curso.
-   * Se confirma la acción y luego se envía una solicitud DELETE al backend.
-   * @param cursoId - ID del curso a desinscribirse
-   */
   const handleDesinscribirse = async (cursoId: number): Promise<void> => {
-    // 🧭 Confirmación antes de continuar
-    if (!window.confirm("¿Seguro que deseas salirte de este curso?")) return;
+    if (!window.confirm("¿Seguro que deseas desinscribirte de este curso?")) return;
 
     try {
-      // 🔹 Solicitud DELETE al backend
       await axios.delete(`http://localhost:4000/inscripciones/${cursoId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // 🧹 Elimina el curso del estado local
       setCursos(cursos.filter((curso) => curso.id !== cursoId));
-
-      // ✅ Notificación de éxito
-      alert("Te desinscribiste del curso con éxito ✅");
+      alert("✅ Te has desinscrito del curso correctamente");
     } catch (err) {
       console.error(err);
-      alert("Error al desinscribirse del curso ❌");
+      alert("❌ Error al desinscribirse del curso");
     }
   };
 
-  /**
-   * 🖥️ Renderizado del componente
-   * Muestra la lista de cursos, o un mensaje si no hay ninguno.
-   */
-  return (
-    <div style={{ padding: "20px", marginTop: "80px" }}>
-      <h1>Mis Cursos</h1>
+  if (loading) {
+    return (
+      <DashboardLayout rol="estudiante">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Cargando tus cursos...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-      {/* Si el usuario no tiene cursos, mostrar mensaje */}
-      {cursos.length === 0 ? (
-        <p>No estás inscrito en ningún curso</p>
-      ) : (
-        // 📋 Listado de cursos
-        <ul>
-          {cursos.map((curso) => (
-            <li key={curso.id}>
-              <strong>{curso.titulo}</strong> - {curso.descripcion}
-              <button
-                style={{ marginLeft: "10px", color: "red" }}
-                onClick={() => handleDesinscribirse(curso.id)}
-              >
-                Desinscribirse
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+  return (
+    <DashboardLayout rol="estudiante">
+      <div className="mis-cursos-page">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">📚 Mis Cursos</h1>
+            <p className="page-subtitle">
+              Gestiona y continúa con tus cursos inscritos
+            </p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="stats-mini-grid">
+          <div className="stat-mini-card">
+            <BookOpen size={24} className="stat-mini-icon" />
+            <div>
+              <p className="stat-mini-value">{cursos.length}</p>
+              <p className="stat-mini-label">Cursos Activos</p>
+            </div>
+          </div>
+
+          <div className="stat-mini-card">
+            <Clock size={24} className="stat-mini-icon" />
+            <div>
+              <p className="stat-mini-value">0h</p>
+              <p className="stat-mini-label">Tiempo Invertido</p>
+            </div>
+          </div>
+
+          <div className="stat-mini-card">
+            <TrendingUp size={24} className="stat-mini-icon" />
+            <div>
+              <p className="stat-mini-value">0%</p>
+              <p className="stat-mini-label">Progreso Promedio</p>
+            </div>
+          </div>
+
+          <div className="stat-mini-card">
+            <Award size={24} className="stat-mini-icon" />
+            <div>
+              <p className="stat-mini-value">0</p>
+              <p className="stat-mini-label">Completados</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Lista de cursos */}
+        {cursos.length === 0 ? (
+          <div className="empty-state-large">
+            <AlertCircle size={64} className="empty-icon" />
+            <h3>No estás inscrito en ningún curso</h3>
+            <p>Explora nuestro catálogo y comienza a aprender algo nuevo hoy</p>
+            <button 
+              onClick={() => navigate("/explorar")}
+              className="btn-explore"
+            >
+              Explorar Cursos
+            </button>
+          </div>
+        ) : (
+          <div className="cursos-list">
+            {cursos.map((curso) => (
+              <div key={curso.id} className="curso-item-card">
+                <div className="curso-item-header">
+                  <div className="curso-item-icon">
+                    <BookOpen size={32} />
+                  </div>
+                  <div className="curso-item-info">
+                    <h3 className="curso-item-title">{curso.titulo}</h3>
+                    <p className="curso-item-description">{curso.descripcion}</p>
+                  </div>
+                </div>
+
+                <div className="curso-item-progress">
+                  <div className="progress-info">
+                    <span className="progress-label">Progreso del curso</span>
+                    <span className="progress-percentage">0%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: "0%" }}></div>
+                  </div>
+                </div>
+
+                <div className="curso-item-actions">
+                  <button className="btn-continue">
+                    Continuar Aprendiendo
+                  </button>
+                  <button
+                    onClick={() => handleDesinscribirse(curso.id)}
+                    className="btn-unsubscribe"
+                  >
+                    Desinscribirme
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
 

@@ -1,94 +1,237 @@
-/* index.css — usando solo Bootstrap */
-
-/* Importa el CSS de Bootstrap */
+/* ESTILOS GLOBALES – Bootstrap + Modo Oscuro Integrado */
 @import "bootstrap/dist/css/bootstrap.min.css";
 
-/* Tus estilos personalizados */
+/* ===== CONFIGURACIÓN GENERAL ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   background-color: #f8f9fa;
   color: #212529;
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: background-color 0.3s, color 0.3s;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
 }
 
-/* Modo oscuro opcional (si lo activas manualmente con JS o una clase) */
+/* ===== MODO OSCURO GLOBAL ===== */
 body.dark {
-  background-color: #212529;
+  background-color: #0f1115;
   color: #f8f9fa;
 }
 
-/* Ejemplo de personalización */
-.container-custom {
-  max-width: 900px;
-  margin: 2rem auto;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
-}
-
-/* ✅ Fuerza el diseño del botón hamburguesa */
-.hamburger-btn {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 28px;
-  height: 20px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 8px;
-  z-index: 1100;
-}
-
-.hamburger-btn .bar {
-  display: block;
-  width: 100%;
-  height: 3px;
-  background-color: #222;
-  border-radius: 2px;
-  transition: all 0.3s ease;
-}
-
-/* Hover suave */
-.hamburger-btn:hover .bar {
-  background-color: #555;
-  transform: scaleX(1.05);
-}
-
-/* 🌙 Modo oscuro */
-body.bg-dark .hamburger-btn .bar {
-  background-color: #f8f9fa !important;
-}
-
-
-/* 🌙 Colores para modo oscuro */
-body.bg-dark .hamburger-btn .bar {
-  background-color: #f1f1f1;
-}
-/* ===== Animación del menú desplegable ===== */
-.menu-desplegable {
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-  pointer-events: none;
-}
-
-.menu-desplegable.activo {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-/* ===== Suaviza el cambio entre modo claro y oscuro ===== */
-.navbar,
-body {
+/* ===== NAVBAR (solo para páginas públicas) ===== */
+.navbar {
+  background-color: #ffffff;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ===== Ajuste visual del avatar ===== */
-.navbar .bi-person-fill {
-  font-size: 20px;
+body.dark .navbar {
+  background-color: #1a1d22 !important;
+}
+
+.navbar .navbar-brand {
+  color: #0d6efd;
+  font-weight: 700;
+  transition: color 0.3s ease;
+}
+
+body.dark .navbar .navbar-brand {
+  color: #7ab3f0;
+}
+
+.navbar .bi-mortarboard-fill {
   color: inherit;
+}
+
+.navbar .nav-link {
+  color: #212529;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+body.dark .navbar .nav-link {
+  color: #f8f9fa;
+}
+
+.navbar .nav-link:hover {
+  color: #0d6efd;
+}
+
+/* ======== BOTÓN MODO OSCURO ======== */
+.btn-toggle-theme {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-toggle-theme svg {
+  color: #212529;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.btn-toggle-theme:hover svg {
+  transform: rotate(20deg) scale(1.1);
+}
+
+body.dark .btn-toggle-theme svg {
+  color: #f8f9fa;
+}
+
+.btn-toggle-theme:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.dark .btn-toggle-theme:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ===== GRADIENT TEXT ===== */
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== SCROLLBAR PERSONALIZADO ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+body.dark ::-webkit-scrollbar-track {
+  background: #1a1d22;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: #444;
+}
+
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* ===== SELECCIÓN DE TEXTO ===== */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+body.dark ::selection {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+/* ===== FOCUS ACCESIBILIDAD ===== */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ===== ANIMACIONES ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* ===== SPINNER GLOBAL ===== */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e4e4e7;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+body.dark .spinner {
+  border-color: #27272a;
+  border-top-color: #3b82f6;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+}
+
+.loading-container p {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+body.dark .loading-container p {
+  color: #a1a1aa;
+}
+
+/* ===== UTILIDADES ===== */
+.text-center {
+  text-align: center;
+}
+
+/* ===== SMOOTH SCROLL ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===== RESPONSIVE IMAGES ===== */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ===== BUTTON RESET ===== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ===== LINK RESET ===== */
+a {
+  text-decoration: none;
 }

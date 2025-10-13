@@ -25,7 +25,7 @@ const InicioRedirect: React.FC = () => {
    * se le redirige al panel de administración.
    */
   if (rol === "admin") {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/admin/cursos" replace />;
   }
 
   /**

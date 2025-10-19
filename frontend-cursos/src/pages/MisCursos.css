@@ -95,6 +95,7 @@ body.dark .stat-mini-label {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   border: 2px solid transparent;
+  position: relative;
 }
 
 body.dark .curso-item-card {
@@ -178,6 +179,23 @@ body.dark .progress-label {
   color: #3b82f6;
 }
 
+.progress-bar {
+  height: 6px;
+  background: #e4e4e7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+body.dark .progress-bar {
+  background: #27272a;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  transition: width 0.3s ease;
+}
+
 /* Actions */
 .curso-item-actions {
   display: flex;
@@ -194,6 +212,9 @@ body.dark .progress-label {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .btn-continue {
@@ -215,6 +236,23 @@ body.dark .progress-label {
 
 .btn-unsubscribe:hover {
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* Completado Badge */
+.curso-completado-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border: 2px solid #10b981;
+  color: #10b981;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
 }
 
 /* Empty State */
@@ -266,12 +304,43 @@ body.dark .empty-state-large p {
   font-weight: 600;
   text-decoration: none;
   transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
 }
 
 .btn-explore:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   color: white;
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e4e4e7;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+body.dark .spinner {
+  border-color: #27272a;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {
@@ -288,5 +357,10 @@ body.dark .empty-state-large p {
   .btn-continue,
   .btn-unsubscribe {
     width: 100%;
+  }
+
+  .curso-completado-badge {
+    position: static;
+    margin-top: 1rem;
   }
 }

@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import DashboardLayout from "../components/DashboardLayout";
-import { BookOpen, Clock, Award, TrendingUp, AlertCircle } from "lucide-react";
+import { BookOpen, Clock, Award, TrendingUp, AlertCircle, Play } from "lucide-react";
 import "./MisCursos.css";
 
 interface Curso {
   id: number;
   titulo: string;
   descripcion: string;
+  progreso?: number;
+  completado?: boolean;
 }
 
 function MisCursos() {
@@ -21,24 +23,24 @@ function MisCursos() {
   useEffect(() => {
     if (!token) return;
     
-    const fetchMisCursos = async () => {
-      try {
-        const res = await axios.get<Curso[]>(
-          "http://localhost:4000/inscripciones/mis-cursos",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setCursos(res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMisCursos();
   }, [token]);
+
+  const fetchMisCursos = async () => {
+    try {
+      const res = await axios.get<Curso[]>(
+        "http://localhost:4000/inscripciones/mis-cursos",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setCursos(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDesinscribirse = async (cursoId: number): Promise<void> => {
     if (!window.confirm("¿Seguro que deseas desinscribirte de este curso?")) return;
@@ -54,6 +56,10 @@ function MisCursos() {
       console.error(err);
       alert("❌ Error al desinscribirse del curso");
     }
+  };
+
+  const handleContinuarAprendiendo = (cursoId: number) => {
+    navigate(`/curso/${cursoId}`);
   };
 
   if (loading) {
@@ -92,24 +98,30 @@ function MisCursos() {
           <div className="stat-mini-card">
             <Clock size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">0h</p>
-              <p className="stat-mini-label">Tiempo Invertido</p>
+              <p className="stat-mini-value">
+                {cursos.reduce((acc, c) => acc + (c.progreso || 0), 0) / Math.max(cursos.length, 1) | 0}%
+              </p>
+              <p className="stat-mini-label">Progreso Promedio</p>
             </div>
           </div>
 
           <div className="stat-mini-card">
             <TrendingUp size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">0%</p>
-              <p className="stat-mini-label">Progreso Promedio</p>
+              <p className="stat-mini-value">
+                {cursos.filter(c => c.completado).length}
+              </p>
+              <p className="stat-mini-label">Completados</p>
             </div>
           </div>
 
           <div className="stat-mini-card">
             <Award size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">0</p>
-              <p className="stat-mini-label">Completados</p>
+              <p className="stat-mini-value">
+                {cursos.filter(c => c.completado).length}
+              </p>
+              <p className="stat-mini-label">Certificados</p>
             </div>
           </div>
         </div>
@@ -144,15 +156,22 @@ function MisCursos() {
                 <div className="curso-item-progress">
                   <div className="progress-info">
                     <span className="progress-label">Progreso del curso</span>
-                    <span className="progress-percentage">0%</span>
+                    <span className="progress-percentage">{curso.progreso || 0}%</span>
                   </div>
                   <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: "0%" }}></div>
+                    <div 
+                      className="progress-fill" 
+                      style={{ width: `${curso.progreso || 0}%` }}
+                    ></div>
                   </div>
                 </div>
 
                 <div className="curso-item-actions">
-                  <button className="btn-continue">
+                  <button
+                    onClick={() => handleContinuarAprendiendo(curso.id)}
+                    className="btn-continue"
+                  >
+                    <Play size={18} />
                     Continuar Aprendiendo
                   </button>
                   <button
@@ -162,6 +181,13 @@ function MisCursos() {
                     Desinscribirme
                   </button>
                 </div>
+
+                {curso.completado && (
+                  <div className="curso-completado-badge">
+                    <Award size={20} />
+                    <span>Curso Completado - Certificado Disponible</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

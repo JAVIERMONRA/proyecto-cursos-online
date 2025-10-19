@@ -5,7 +5,6 @@ import {
   BookOpen,
   Edit,
   Trash2,
-  Eye,
   Search
 } from "lucide-react";
 import "./AdminDashboard.css";
@@ -83,6 +82,9 @@ function AdminCursos() {
         {
           titulo: cursoEditando.titulo,
           descripcion: cursoEditando.descripcion,
+          nivel: "principiante",
+          duracion: 0,
+          estado: "activo"
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -261,7 +263,7 @@ function AdminCursos() {
                   />
                 </div>
 
-                {cursoEditando?.secciones && cursoEditando.secciones.length > 0 && (
+                {cursoEditando.secciones && cursoEditando.secciones.length > 0 && (
                   <div className="form-group">
                     <label>Secciones del Curso</label>
                     {cursoEditando.secciones.map((sec, index) => (
@@ -271,12 +273,12 @@ function AdminCursos() {
                           className="form-input mb-2"
                           value={sec.subtitulo}
                           onChange={(e) => {
-                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            const nuevasSecciones = [...(cursoEditando.secciones || [])];
                             nuevasSecciones[index].subtitulo = e.target.value;
                             setCursoEditando({ 
-                              ...cursoEditando!, 
+                              ...cursoEditando, 
                               secciones: nuevasSecciones 
-                            } as Curso);
+                            });
                           }}
                         />
                         <textarea
@@ -284,12 +286,12 @@ function AdminCursos() {
                           rows={2}
                           value={sec.descripcion}
                           onChange={(e) => {
-                            const nuevasSecciones = [...(cursoEditando?.secciones ?? [])];
+                            const nuevasSecciones = [...(cursoEditando.secciones || [])];
                             nuevasSecciones[index].descripcion = e.target.value;
                             setCursoEditando({ 
-                              ...cursoEditando!, 
+                              ...cursoEditando, 
                               secciones: nuevasSecciones 
-                            } as Curso);
+                            });
                           }}
                         />
                       </div>

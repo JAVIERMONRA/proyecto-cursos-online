@@ -45,15 +45,25 @@ const Perfil: React.FC = () => {
       }
     } catch (error) {
       console.error("Error al cargar perfil:", error);
+      setMessage({ type: "error", text: "Error al cargar el perfil" });
     }
   };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: "error", text: "La imagen no debe superar 5MB" });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewImage(reader.result as string);
+      };
+      reader.onerror = () => {
+        setMessage({ type: "error", text: "Error al leer la imagen" });
       };
       reader.readAsDataURL(file);
     }
@@ -65,7 +75,7 @@ const Perfil: React.FC = () => {
     setMessage({ type: "", text: "" });
 
     try {
-      await axios.put(
+      const response = await axios.put(
         "http://localhost:4000/auth/perfil",
         {
           nombre: userData.nombre,
@@ -77,8 +87,15 @@ const Perfil: React.FC = () => {
       );
 
       setMessage({ type: "success", text: "✅ Perfil actualizado correctamente" });
-    } catch (error) {
-      setMessage({ type: "error", text: "❌ Error al actualizar el perfil" });
+      
+      // Disparar evento para actualizar Sidebar
+      window.dispatchEvent(new Event("userProfileUpdated"));
+      
+      // Recargar datos después de 1 segundo
+      setTimeout(() => fetchUserData(), 1000);
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || "Error al actualizar el perfil";
+      setMessage({ type: "error", text: `❌ ${errorMsg}` });
     } finally {
       setLoading(false);
     }
@@ -121,9 +138,10 @@ const Perfil: React.FC = () => {
       });
       setPasswords({ actual: "", nueva: "", confirmar: "" });
     } catch (error: any) {
+      const errorMsg = error.response?.data?.error || "Error al cambiar contraseña";
       setMessage({
         type: "error",
-        text: error.response?.data?.error || "❌ Error al cambiar contraseña",
+        text: `❌ ${errorMsg}`,
       });
     } finally {
       setLoading(false);
@@ -197,7 +215,26 @@ const Perfil: React.FC = () => {
                     setUserData({ ...userData, nombre: e.target.value })
                   }
                   required
+                  disabled={loading}
                 />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="email">
+                  <User size={18} />
+                  Correo Electrónico
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className="form-control"
+                  value={userData.email}
+                  disabled
+                  title="El correo no puede ser modificado"
+                />
+                <small style={{ color: "#6c757d" }}>
+                  El correo no puede ser modificado
+                </small>
               </div>
 
               <button type="submit" className="btn-save" disabled={loading}>
@@ -225,6 +262,7 @@ const Perfil: React.FC = () => {
                     setPasswords({ ...passwords, actual: e.target.value })
                   }
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -242,6 +280,7 @@ const Perfil: React.FC = () => {
                     setPasswords({ ...passwords, nueva: e.target.value })
                   }
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -259,6 +298,7 @@ const Perfil: React.FC = () => {
                     setPasswords({ ...passwords, confirmar: e.target.value })
                   }
                   required
+                  disabled={loading}
                 />
               </div>
 

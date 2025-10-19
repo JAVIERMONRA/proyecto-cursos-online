@@ -7,8 +7,12 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminCursos from "./pages/AdminCursos";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminCrearCurso from "./pages/AdminCrearCurso";
+import AdminEstadisticas from "./pages/AdminEstadisticas";
+import AdminUsuarios from "./pages/AdminUsuarios";
+import AdminPerfil from "./pages/AdminPerfil";
 import MisCursos from "./pages/MisCursos";
 import ExplorarCursos from "./pages/ExplorarCursos";
+import CursoDetalle from "./pages/CursoDetalle";
 import Perfil from "./pages/Perfil";
 import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
@@ -49,6 +53,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute>
                 <MisCursos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/curso/:cursoId"
+            element={
+              <ProtectedRoute>
+                <CursoDetalle />
               </ProtectedRoute>
             }
           />
@@ -98,7 +110,7 @@ const App: React.FC = () => {
             path="/admin/estadisticas"
             element={
               <RutaAdmin>
-                <AdminDashboard />
+                <AdminEstadisticas />
               </RutaAdmin>
             }
           />
@@ -106,7 +118,15 @@ const App: React.FC = () => {
             path="/admin/usuarios"
             element={
               <RutaAdmin>
-                <AdminDashboard />
+                <AdminUsuarios />
+              </RutaAdmin>
+            }
+          />
+          <Route
+            path="/admin/perfil"
+            element={
+              <RutaAdmin>
+                <AdminPerfil />
               </RutaAdmin>
             }
           />

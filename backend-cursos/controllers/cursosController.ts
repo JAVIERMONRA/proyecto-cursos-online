@@ -25,32 +25,38 @@ export const upload = multer({ storage });
 // ======================
 // 🔹 Interfaces
 // ======================
-interface Curso {
+interface Curso extends RowDataPacket {
   id: number;
   titulo: string;
   descripcion: string;
+  profesorId?: number;
+  nivel?: string;
+  duracion?: number;
+  estado?: string;
 }
 
-interface Seccion {
+interface Seccion extends RowDataPacket {
   id: number;
   cursoId: number;
   subtitulo: string;
   descripcion: string;
+  archivos?: any[];
+  lecciones?: any[];
 }
-
 
 interface Inscripcion extends RowDataPacket {
   usuarioId: number;
   cursoId: number;
 }
 
-
 // ======================
 // 📘 CRUD de Cursos
 // ======================
 export const listarCursos = async (req: Request, res: Response): Promise<void> => {
   try {
-    const [rows] = await pool.query<Curso[]>("SELECT * FROM cursos");
+    const [rows] = await pool.query<Curso[]>(
+      "SELECT * FROM cursos WHERE estado = 'activo'"
+    );
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener cursos:", error);
@@ -62,7 +68,6 @@ export const obtenerCurso = async (req: Request, res: Response): Promise<void> =
   try {
     const { id } = req.params;
 
-    // 1️⃣ Obtener el curso
     const [cursoRows] = await pool.query<RowDataPacket[]>(
       "SELECT * FROM cursos WHERE id = ?",
       [id]
@@ -75,13 +80,11 @@ export const obtenerCurso = async (req: Request, res: Response): Promise<void> =
 
     const curso = cursoRows[0];
 
-    // 2️⃣ Obtener las secciones
     const [secciones] = await pool.query<RowDataPacket[]>(
-      "SELECT * FROM secciones WHERE cursoId = ?",
+      "SELECT * FROM secciones WHERE cursoId = ? ORDER BY orden",
       [id]
     );
 
-    // 3️⃣ Obtener los archivos de cada sección
     for (const seccion of secciones) {
       const [archivos] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM archivos WHERE seccionId = ?",
@@ -90,7 +93,6 @@ export const obtenerCurso = async (req: Request, res: Response): Promise<void> =
       seccion.archivos = archivos;
     }
 
-    // 4️⃣ Enviar el curso completo
     res.json({
       ...curso,
       secciones,
@@ -101,11 +103,9 @@ export const obtenerCurso = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-
-
 export const crearCurso = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { titulo, descripcion, profesorId } = req.body;
+    const { titulo, descripcion, profesorId, nivel, duracion } = req.body;
 
     if (!titulo || !descripcion) {
       res.status(400).json({ error: "Título y descripción son requeridos" });
@@ -115,8 +115,8 @@ export const crearCurso = async (req: Request, res: Response): Promise<void> => 
     const profId = profesorId || req.user?.id;
 
     const [result] = await pool.query<ResultSetHeader>(
-      "INSERT INTO cursos (titulo, descripcion, profesorId) VALUES (?, ?, ?)",
-      [titulo, descripcion, profId]
+      "INSERT INTO cursos (titulo, descripcion, profesorId, nivel, duracion) VALUES (?, ?, ?, ?, ?)",
+      [titulo, descripcion, profId, nivel || "principiante", duracion || 0]
     );
 
     res.status(201).json({ 
@@ -132,11 +132,13 @@ export const crearCurso = async (req: Request, res: Response): Promise<void> => 
 export const actualizarCurso = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { titulo, descripcion, profesorId } = req.body;
+    const { titulo, descripcion, nivel, duracion, estado } = req.body;
 
     const [result] = await pool.query<ResultSetHeader>(
-      "UPDATE cursos SET titulo = ?, descripcion = ?, profesorId = ? WHERE id = ?",
-      [titulo, descripcion, profesorId, id]
+      `UPDATE cursos 
+       SET titulo = ?, descripcion = ?, nivel = ?, duracion = ?, estado = ? 
+       WHERE id = ?`,
+      [titulo, descripcion, nivel, duracion, estado, id]
     );
 
     if (result.affectedRows === 0) {
@@ -154,6 +156,7 @@ export const actualizarCurso = async (req: Request, res: Response): Promise<void
 export const eliminarCurso = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+
     const [result] = await pool.query<ResultSetHeader>(
       "DELETE FROM cursos WHERE id = ?", 
       [id]
@@ -181,10 +184,11 @@ export const misCursos = async (req: Request, res: Response): Promise<void> => {
     }
 
     const [rows] = await pool.query<Curso[]>(
-      `SELECT c.* 
+      `SELECT c.*, i.progreso, i.completado
        FROM cursos c
        JOIN inscripciones i ON c.id = i.cursoId
-       WHERE i.usuarioId = ?`,
+       WHERE i.usuarioId = ?
+       ORDER BY i.fechaInscripcion DESC`,
       [usuarioId]
     );
 
@@ -232,47 +236,94 @@ export const inscribirEnCurso = async (req: Request, res: Response): Promise<voi
 // ======================
 export const crearCursoConSecciones = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { titulo, descripcion, profesorId, secciones } = req.body;
-    const parsedSecciones = JSON.parse(secciones || "[]");
+    const { titulo, descripcion, profesorId, secciones, nivel, duracion } = req.body;
+    
+    console.log("📦 Datos recibidos en el backend:");
+    console.log("- Título:", titulo);
+    console.log("- Descripción:", descripcion);
+    console.log("- Nivel:", nivel);
+    console.log("- Duración:", duracion);
+    console.log("- Secciones (raw):", typeof secciones, secciones);
 
     if (!titulo || !descripcion) {
       res.status(400).json({ error: "Título y descripción son requeridos" });
       return;
     }
 
-    // 1️⃣ Crear el curso principal
+    // Parsear secciones si viene como string
+    let parsedSecciones = [];
+    try {
+      parsedSecciones = typeof secciones === 'string' ? JSON.parse(secciones) : secciones || [];
+      console.log("✅ Secciones parseadas:", parsedSecciones.length, "secciones");
+    } catch (e) {
+      console.error("❌ Error al parsear secciones:", e);
+      parsedSecciones = [];
+    }
+
+    // Crear el curso principal
     const [cursoResult] = await pool.query<ResultSetHeader>(
-      "INSERT INTO cursos (titulo, descripcion, profesorId) VALUES (?, ?, ?)",
-      [titulo, descripcion, profesorId || null]
+      "INSERT INTO cursos (titulo, descripcion, profesorId, nivel, duracion) VALUES (?, ?, ?, ?, ?)",
+      [titulo, descripcion, profesorId || null, nivel || "principiante", duracion || 0]
     );
 
     const cursoId = cursoResult.insertId;
+    console.log("✅ Curso creado con ID:", cursoId);
 
-    // 2️⃣ Guardar secciones
-    for (const seccion of parsedSecciones) {
+    // Crear secciones y lecciones
+    for (let i = 0; i < parsedSecciones.length; i++) {
+      const seccion = parsedSecciones[i];
+      
+      console.log(`\n📝 Procesando sección ${i + 1}:`, seccion.subtitulo);
+
+      // Insertar sección
       const [seccionResult] = await pool.query<ResultSetHeader>(
-        "INSERT INTO secciones (cursoId, subtitulo, descripcion) VALUES (?, ?, ?)",
-        [cursoId, seccion.subtitulo, seccion.descripcion]
+        "INSERT INTO secciones (cursoId, subtitulo, descripcion, orden) VALUES (?, ?, ?, ?)",
+        [cursoId, seccion.subtitulo, seccion.descripcion, i + 1]
       );
 
       const seccionId = seccionResult.insertId;
+      console.log(`✅ Sección creada con ID:`, seccionId);
 
-      // 3️⃣ Asociar archivos subidos
-      const archivos = (req.files as Express.Multer.File[]) || [];
-      const archivosSeccion = archivos.filter(file =>
-        file.originalname.includes(seccion.subtitulo)
-      );
+      // Agregar lecciones a la sección
+      if (seccion.lecciones && Array.isArray(seccion.lecciones)) {
+        console.log(`📚 Creando ${seccion.lecciones.length} lecciones para la sección`);
+        
+        for (let j = 0; j < seccion.lecciones.length; j++) {
+          const leccion = seccion.lecciones[j];
+          
+          await pool.query(
+            "INSERT INTO lecciones (seccionId, titulo, contenido, orden, duracion) VALUES (?, ?, ?, ?, ?)",
+            [seccionId, leccion.titulo || `Lección ${j + 1}`, leccion.contenido || "", j + 1, leccion.duracion || 0]
+          );
+          
+          console.log(`   ✓ Lección ${j + 1}:`, leccion.titulo);
+        }
+      } else {
+        console.log(`⚠️  No hay lecciones para esta sección`);
+      }
 
-      for (const file of archivosSeccion) {
-        await pool.query(
-          "INSERT INTO archivos (seccionId, nombreArchivo, rutaArchivo, tipoArchivo) VALUES (?, ?, ?, ?)",
-          [seccionId, file.originalname, file.path, file.mimetype]
+      // Procesar archivos de la sección
+      const archivos = req.files as any;
+      if (archivos && Array.isArray(archivos)) {
+        const archivosSeccion = archivos.filter((file: any) =>
+          file.originalname.includes(seccion.subtitulo)
         );
+
+        console.log(`📎 Archivos para sección ${i + 1}:`, archivosSeccion.length);
+
+        for (const file of archivosSeccion) {
+          await pool.query(
+            "INSERT INTO archivos (seccionId, nombreArchivo, rutaArchivo, tipoArchivo, tamanio) VALUES (?, ?, ?, ?, ?)",
+            [seccionId, file.originalname, file.path, file.mimetype, file.size]
+          );
+        }
       }
     }
 
+    console.log("\n🎉 Curso completo creado exitosamente");
+
     res.status(201).json({
-      mensaje: "✅ Curso y secciones creados exitosamente",
+      mensaje: "Curso y secciones creados exitosamente",
       cursoId,
     });
   } catch (error) {
@@ -281,12 +332,10 @@ export const crearCursoConSecciones = async (req: Request, res: Response): Promi
   }
 };
 
-// 🟩 Obtener curso con secciones y archivos
 export const obtenerCursoCompleto = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    // 1️⃣ Obtener curso
     const [cursoRows] = await pool.query<RowDataPacket[]>(
       "SELECT * FROM cursos WHERE id = ?",
       [id]
@@ -299,18 +348,23 @@ export const obtenerCursoCompleto = async (req: Request, res: Response): Promise
 
     const curso = cursoRows[0];
 
-    // 2️⃣ Obtener secciones del curso
     const [secciones] = await pool.query<RowDataPacket[]>(
-      "SELECT * FROM secciones WHERE cursoId = ?",
+      "SELECT * FROM secciones WHERE cursoId = ? ORDER BY orden",
       [id]
     );
 
-    // 3️⃣ Obtener archivos de cada sección
     for (const seccion of secciones) {
+      const [lecciones] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM lecciones WHERE seccionId = ? ORDER BY orden",
+        [seccion.id]
+      );
+
       const [archivos] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM archivos WHERE seccionId = ?",
         [seccion.id]
       );
+
+      seccion.lecciones = lecciones;
       seccion.archivos = archivos;
     }
 

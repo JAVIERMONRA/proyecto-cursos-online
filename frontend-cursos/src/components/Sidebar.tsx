@@ -12,12 +12,18 @@ import {
   List,
   Sun,
   Moon,
-  Search
+  Search,
+  Users
 } from "lucide-react";
 import "./Sidebar.css";
 
 interface SidebarProps {
   rol: "admin" | "estudiante";
+}
+
+interface UserData {
+  nombre: string;
+  fotoPerfil?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
@@ -27,10 +33,29 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
     return saved === "dark";
   });
   
+  const [userData, setUserData] = useState<UserData>({
+    nombre: rol === "admin" ? "Administrador" : "Estudiante",
+    fotoPerfil: undefined,
+  });
+
+  const [refreshKey, setRefreshKey] = useState(0);
+  
   const location = useLocation();
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
-  // Aplicar tema al cargar
+  useEffect(() => {
+    fetchUserData();
+    
+    const handleUserUpdate = () => {
+      fetchUserData();
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener("userProfileUpdated", handleUserUpdate);
+    return () => window.removeEventListener("userProfileUpdated", handleUserUpdate);
+  }, []);
+
   useEffect(() => {
     if (darkMode) {
       document.body.classList.add("dark");
@@ -38,6 +63,27 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
       document.body.classList.remove("dark");
     }
   }, [darkMode]);
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("http://localhost:4000/auth/perfil", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserData({
+          nombre: data.nombre || (rol === "admin" ? "Administrador" : "Estudiante"),
+          fotoPerfil: data.fotoPerfil || undefined,
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar datos del usuario:", error);
+    }
+  };
 
   const handleLogout = () => {
     if (window.confirm("¿Estás seguro de que deseas cerrar sesión?")) {
@@ -57,9 +103,12 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
   // Menús según el rol
   const menuItems = rol === "admin" 
     ? [
+        { path: "/admin/dashboard", icon: BarChart3, label: "Dashboard" },
         { path: "/admin/cursos", icon: List, label: "Gestionar Cursos" },
         { path: "/admin/crear-curso", icon: PlusCircle, label: "Crear Curso" },
         { path: "/admin/estadisticas", icon: BarChart3, label: "Estadísticas" },
+        { path: "/admin/usuarios", icon: Users, label: "Usuarios" },
+        { path: "/admin/perfil", icon: UserCircle, label: "Mi Perfil" },
       ]
     : [
         { path: "/mis-cursos", icon: BookOpen, label: "Mis Cursos" },
@@ -70,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
   return (
     <>
       {/* Sidebar */}
-      <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <div key={refreshKey} className={`sidebar ${collapsed ? "collapsed" : ""}`}>
         {/* Header */}
         <div className="sidebar-header">
           <div className="sidebar-brand">
@@ -86,15 +135,26 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
           </button>
         </div>
 
-        {/* User Info */}
+        {/* User Info - ACTUALIZADO */}
         <div className="sidebar-user">
           <div className="user-avatar">
-            {rol === "admin" ? "A" : "E"}
+            {userData.fotoPerfil ? (
+              <img
+                src={userData.fotoPerfil}
+                alt="Perfil"
+                className="avatar-image"
+                title={userData.nombre}
+              />
+            ) : (
+              <>
+                {rol === "admin" ? "A" : "E"}
+              </>
+            )}
           </div>
           {!collapsed && (
             <div className="user-info">
-              <p className="user-name">
-                {rol === "admin" ? "Administrador" : "Estudiante"}
+              <p className="user-name" title={userData.nombre}>
+                {userData.nombre}
               </p>
               <p className="user-role">{rol}</p>
             </div>

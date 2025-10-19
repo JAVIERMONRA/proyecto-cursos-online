@@ -1,17 +1,23 @@
 import express from "express";
 import { verificarToken, verificarRolAdmin } from "../middlewares/authMiddleware.js";
-import { obtenerEstadisticas } from "../controllers/adminController.js";
+import { 
+  obtenerEstadisticas, 
+  obtenerUsuarios, 
+  eliminarUsuario 
+} from "../controllers/adminController.js";
 
 const router = express.Router();
 
 /**
- * Define las rutas administrativas del sistema.
- * 
- * 🔹 Ruta: **GET /estadisticas**
- * - Requiere autenticación (`verificarToken`).
- * - Solo accesible por usuarios con rol de administrador (`verificarRolAdmin`).
- * - Ejecuta el controlador `obtenerEstadisticas` para retornar métricas generales del sistema.
+ * Rutas administrativas protegidas
+ * Todas requieren autenticación y rol de administrador
  */
+
+// Estadísticas generales
 router.get("/estadisticas", verificarToken, verificarRolAdmin, obtenerEstadisticas);
+
+// Gestión de usuarios
+router.get("/usuarios", verificarToken, verificarRolAdmin, obtenerUsuarios);
+router.delete("/usuarios/:id", verificarToken, verificarRolAdmin, eliminarUsuario);
 
 export default router;

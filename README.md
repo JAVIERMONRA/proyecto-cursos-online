@@ -5,8 +5,7 @@ Incluye un frontend en React, un backend en Node.js/Express y una base de datos 
 
 <img width="1363" height="605" alt="image" src="https://github.com/user-attachments/assets/84f137fd-e0fd-46e6-991e-7fbc22fd1e52" />
 <img width="244" height="546" alt="image" src="https://github.com/user-attachments/assets/a93736a4-e2ba-4fa2-bab1-a52c70c0b06f" />
-<img width="1366" height="635" alt="image" src="https://github.com/user-attachments/assets/5025ffef-d3fb-4d19-bbfb-f33775dc2bd4" />
-
+<img width="1365" height="636" alt="image" src="https://github.com/user-attachments/assets/a4ff8097-a547-48fe-b9da-fb30132cee0e" />
 
 ## **Tecnologías utilizadas**
 
@@ -29,8 +28,7 @@ Incluye un frontend en React, un backend en Node.js/Express y una base de datos 
 ## **Instalar dependencias y ejecutar**
 
 ### **Backend**
-cd backend-cursos  
-npm install  
+cd backend-cursos   
 npm run dev
 
 ### **Frontend**

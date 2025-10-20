@@ -34,9 +34,10 @@ function MisCursos() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log("📚 Mis cursos cargados:", res.data);
       setCursos(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Error al cargar mis cursos:", err);
     } finally {
       setLoading(false);
     }
@@ -73,6 +74,12 @@ function MisCursos() {
     );
   }
 
+  const progresoPromedio = cursos.length > 0 
+    ? Math.round(cursos.reduce((acc, c) => acc + (c.progreso || 0), 0) / cursos.length)
+    : 0;
+
+  const cursosCompletados = cursos.filter(c => c.completado).length;
+
   return (
     <DashboardLayout rol="estudiante">
       <div className="mis-cursos-page">
@@ -98,9 +105,7 @@ function MisCursos() {
           <div className="stat-mini-card">
             <Clock size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">
-                {cursos.reduce((acc, c) => acc + (c.progreso || 0), 0) / Math.max(cursos.length, 1) | 0}%
-              </p>
+              <p className="stat-mini-value">{progresoPromedio}%</p>
               <p className="stat-mini-label">Progreso Promedio</p>
             </div>
           </div>
@@ -108,9 +113,7 @@ function MisCursos() {
           <div className="stat-mini-card">
             <TrendingUp size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">
-                {cursos.filter(c => c.completado).length}
-              </p>
+              <p className="stat-mini-value">{cursosCompletados}</p>
               <p className="stat-mini-label">Completados</p>
             </div>
           </div>
@@ -118,9 +121,7 @@ function MisCursos() {
           <div className="stat-mini-card">
             <Award size={24} className="stat-mini-icon" />
             <div>
-              <p className="stat-mini-value">
-                {cursos.filter(c => c.completado).length}
-              </p>
+              <p className="stat-mini-value">{cursosCompletados}</p>
               <p className="stat-mini-label">Certificados</p>
             </div>
           </div>
@@ -172,7 +173,7 @@ function MisCursos() {
                     className="btn-continue"
                   >
                     <Play size={18} />
-                    Continuar Aprendiendo
+                    {curso.progreso && curso.progreso > 0 ? 'Continuar Aprendiendo' : 'Comenzar Curso'}
                   </button>
                   <button
                     onClick={() => handleDesinscribirse(curso.id)}

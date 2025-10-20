@@ -31,11 +31,11 @@ router.post(
 // ✅ Listar todos los cursos
 router.get("/", listarCursos);
 
-// ✅ Obtener un curso por su ID
-router.get("/:id", obtenerCurso);
-
 // ✅ Obtener cursos del usuario autenticado
 router.get("/mis-cursos", verificarToken, misCursos);
+
+// ✅ Obtener un curso por su ID
+router.get("/:id", obtenerCurso);
 
 // ✅ Inscribirse en un curso
 router.post("/:id/inscribirse", verificarToken, inscribirEnCurso);

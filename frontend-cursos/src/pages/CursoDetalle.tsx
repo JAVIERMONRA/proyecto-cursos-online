@@ -50,23 +50,24 @@ const CursoDetalle: React.FC = () => {
 
   const fetchCursoDetalle = async () => {
     try {
+      console.log("📖 Cargando curso:", cursoId);
       const res = await axios.get(
         `http://localhost:4000/progreso/${cursoId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log("✅ Curso cargado:", res.data);
       setCurso(res.data);
       setExpandedSecciones([res.data.secciones?.[0]?.id || 0]);
       
-      // Si está completado, cargar certificado
       if (res.data.completado) {
         fetchCertificado();
       }
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || "Error al cargar el curso";
       setError(errorMsg);
-      console.error(err);
+      console.error("❌ Error:", err);
     } finally {
       setLoading(false);
     }
@@ -80,9 +81,10 @@ const CursoDetalle: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log("🏆 Certificado cargado:", res.data);
       setCertificado(res.data);
     } catch (err) {
-      console.error("Error al cargar certificado:", err);
+      console.log("ℹ️ No hay certificado disponible aún");
     }
   };
 
@@ -97,6 +99,7 @@ const CursoDetalle: React.FC = () => {
   const marcarLeccionCompletada = async (leccionId: number) => {
     setMarcandoLeccion(leccionId);
     try {
+      console.log("✅ Marcando lección como completada:", leccionId);
       const res = await axios.post(
         `http://localhost:4000/progreso/${cursoId}/leccion/${leccionId}/completar`,
         {},
@@ -105,7 +108,8 @@ const CursoDetalle: React.FC = () => {
         }
       );
 
-      // Actualizar estado local
+      console.log("📊 Respuesta:", res.data);
+
       setCurso((prev) => {
         if (!prev) return prev;
         return {
@@ -121,16 +125,20 @@ const CursoDetalle: React.FC = () => {
         };
       });
 
-      if (res.data.completado) {
+      if (res.data.completado && res.data.certificado) {
         setCertificado({
           codigo: res.data.certificado,
           fechaEmision: new Date().toISOString(),
+          nombre: "Estudiante",
+          titulo: curso?.titulo
         });
+        alert("🎉 ¡Felicidades! Has completado el curso. Tu certificado está disponible.");
       }
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || "Error al marcar lección";
       setError(errorMsg);
-      console.error(err);
+      console.error("❌ Error:", err);
+      alert("❌ " + errorMsg);
     } finally {
       setMarcandoLeccion(null);
     }
@@ -140,24 +148,33 @@ const CursoDetalle: React.FC = () => {
     if (!certificado) return;
 
     const contenido = `
-CERTIFICADO DE COMPLETITUD
+========================================
+     CERTIFICADO DE COMPLETITUD
+========================================
 
-Nombre: ${certificado.nombre || "Estudiante"}
-Curso: ${curso?.titulo}
-Código: ${certificado.codigo}
-Fecha de Emisión: ${new Date(certificado.fechaEmision).toLocaleDateString()}
+Este certificado acredita que:
 
-Este certificado acredita que el participante ha completado exitosamente
-todos los requisitos del curso y ha demostrado competencia en el material.
+${certificado.nombre || "Estudiante"}
+
+Ha completado exitosamente el curso:
+
+"${curso?.titulo}"
+
+Código del Certificado: ${certificado.codigo}
+Fecha de Emisión: ${new Date(certificado.fechaEmision).toLocaleDateString('es-ES')}
+
+Este certificado verifica que el participante ha 
+demostrado competencia en todos los módulos del curso.
+
+========================================
+       CursosOnline Platform
+========================================
     `.trim();
 
     const element = document.createElement("a");
-    element.setAttribute(
-      "href",
-      "data:text/plain;charset=utf-8," + encodeURIComponent(contenido)
-    );
-    element.setAttribute("download", `certificado-${certificado.codigo}.txt`);
-    element.style.display = "none";
+    const file = new Blob([contenido], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `Certificado-${certificado.codigo}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -203,7 +220,6 @@ todos los requisitos del curso y ha demostrado competencia en el material.
   return (
     <DashboardLayout rol={rol}>
       <div className="curso-detalle-page">
-        {/* Header */}
         <div className="curso-header">
           <button
             onClick={() => navigate("/mis-cursos")}
@@ -218,7 +234,6 @@ todos los requisitos del curso y ha demostrado competencia en el material.
           </div>
         </div>
 
-        {/* Progreso General */}
         <div className="progreso-general-card">
           <div className="progreso-info">
             <div className="progreso-stats">
@@ -240,10 +255,13 @@ todos los requisitos del curso y ha demostrado competencia en el material.
 
           {curso.completado && certificado && (
             <div className="certificado-awarded">
-              <Award size={24} className="award-icon" />
+              <Award size={48} className="award-icon" />
               <div className="certificado-info">
-                <h3>¡Curso Completado!</h3>
+                <h3>🎉 ¡Curso Completado!</h3>
                 <p>Has completado exitosamente este curso. Descarga tu certificado.</p>
+                <p style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '1rem' }}>
+                  Código: {certificado.codigo}
+                </p>
                 <button onClick={descargarCertificado} className="btn-descargar-cert">
                   📄 Descargar Certificado
                 </button>
@@ -252,7 +270,6 @@ todos los requisitos del curso y ha demostrado competencia en el material.
           )}
         </div>
 
-        {/* Secciones y Lecciones */}
         <div className="secciones-container">
           <h2 className="secciones-title">Contenido del Curso</h2>
 

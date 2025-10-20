@@ -35,7 +35,7 @@ export const verificarToken = (
       token,
       process.env.JWT_SECRET as string
     ) as JwtPayload;
-    req.user = decoded;
+    req.user = { id: decoded.id, rol: decoded.rol };
     next();
   } catch (error) {
     res.status(401).json({ error: "Token inválido o expirado" });

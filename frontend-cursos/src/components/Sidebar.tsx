@@ -103,7 +103,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
   // Menús según el rol
   const menuItems = rol === "admin" 
     ? [
-        { path: "/admin/dashboard", icon: BarChart3, label: "Dashboard" },
         { path: "/admin/cursos", icon: List, label: "Gestionar Cursos" },
         { path: "/admin/crear-curso", icon: PlusCircle, label: "Crear Curso" },
         { path: "/admin/estadisticas", icon: BarChart3, label: "Estadísticas" },

@@ -2,6 +2,15 @@ import { Request, Response } from "express";
 import pool from "../config/db.js";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: {
+      id: number;
+      rol: string;
+    };
+  }
+}
+
 interface ProgresoLeccion extends RowDataPacket {
   id: number;
   leccionId: number;
@@ -37,7 +46,6 @@ interface CursoProgreso extends RowDataPacket {
 
 /**
  * Obtener progreso completo del estudiante en un curso
- * Retorna: secciones, lecciones, y estado de completado de cada una
  */
 export const obtenerProgresoCurso = async (
   req: Request,
@@ -54,7 +62,7 @@ export const obtenerProgresoCurso = async (
 
     // Obtener inscripción
     const [[inscripcion]] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM inscripciones WHERE usuarioId = ? AND cursoId = ?",
+      "SELECT id, progreso, completado FROM inscripciones WHERE usuarioId = ? AND cursoId = ?",
       [usuarioId, cursoId]
     );
 
@@ -66,8 +74,8 @@ export const obtenerProgresoCurso = async (
     const inscripcionId = inscripcion.id;
 
     // Obtener curso
-    const [[curso]] = await pool.query<CursoProgreso[]>(
-      "SELECT id, titulo, descripcion, progreso, completado FROM cursos WHERE id = ?",
+    const [[curso]] = await pool.query<RowDataPacket[]>(
+      "SELECT id, titulo, descripcion FROM cursos WHERE id = ?",
       [cursoId]
     );
 
@@ -77,14 +85,14 @@ export const obtenerProgresoCurso = async (
     }
 
     // Obtener secciones
-    const [secciones] = await pool.query<Seccion[]>(
+    const [secciones] = await pool.query<RowDataPacket[]>(
       "SELECT id, subtitulo, descripcion, orden FROM secciones WHERE cursoId = ? ORDER BY orden",
       [cursoId]
     );
 
-    // Para cada sección, obtener lecciones
+    // Para cada sección, obtener lecciones con progreso
     for (const seccion of secciones) {
-      const [lecciones] = await pool.query<Leccion[]>(
+      const [lecciones] = await pool.query<RowDataPacket[]>(
         `SELECT 
           l.id, l.titulo, l.contenido, l.orden, l.duracion,
           COALESCE(pl.completado, 0) as completado
@@ -98,7 +106,11 @@ export const obtenerProgresoCurso = async (
     }
 
     res.json({
-      ...curso,
+      id: curso.id,
+      titulo: curso.titulo,
+      descripcion: curso.descripcion,
+      progreso: inscripcion.progreso || 0,
+      completado: inscripcion.completado || false,
       secciones,
     });
   } catch (error) {
@@ -172,25 +184,37 @@ export const marcarLeccionCompletada = async (
     // Actualizar progreso en inscripción
     await pool.query(
       `UPDATE inscripciones 
-       SET progreso = ?, completado = ?
+       SET progreso = ?, completado = ?, fechaCompletado = ${cursoCompletado ? 'NOW()' : 'NULL'}
        WHERE id = ?`,
       [progreso, cursoCompletado, inscripcionId]
     );
 
     // Si está completado, crear certificado
+    let codigoCertificado = null;
     if (cursoCompletado) {
-      const codigo = `CERT-${usuarioId}-${cursoId}-${Date.now()}`;
-      await pool.query(
-        "INSERT INTO certificados (inscripcionId, codigo) VALUES (?, ?)",
-        [inscripcionId, codigo]
+      // Verificar si ya existe un certificado
+      const [[certExistente]] = await pool.query<RowDataPacket[]>(
+        "SELECT codigo FROM certificados WHERE inscripcionId = ?",
+        [inscripcionId]
       );
+
+      if (!certExistente) {
+        const codigo = `CERT-${usuarioId}-${cursoId}-${Date.now()}`;
+        await pool.query(
+          "INSERT INTO certificados (inscripcionId, codigo) VALUES (?, ?)",
+          [inscripcionId, codigo]
+        );
+        codigoCertificado = codigo;
+      } else {
+        codigoCertificado = certExistente.codigo;
+      }
     }
 
     res.json({
       message: "Lección marcada como completada",
       progreso,
       completado: cursoCompletado,
-      certificado: cursoCompletado ? `CERT-${usuarioId}-${cursoId}-${Date.now()}` : null,
+      certificado: codigoCertificado,
     });
   } catch (error) {
     console.error("Error al marcar lección completada:", error);
@@ -214,7 +238,7 @@ export const obtenerCertificado = async (
       return;
     }
 
-    const [certificado] = await pool.query<RowDataPacket[]>(
+    const [[certificado]] = await pool.query<RowDataPacket[]>(
       `SELECT c.codigo, c.fechaEmision, u.nombre, cu.titulo
        FROM certificados c
        INNER JOIN inscripciones i ON c.inscripcionId = i.id
@@ -224,12 +248,12 @@ export const obtenerCertificado = async (
       [usuarioId, cursoId]
     );
 
-    if (!certificado || certificado.length === 0) {
-      res.status(404).json({ error: "No hay certificado disponible" });
+    if (!certificado) {
+      res.status(404).json({ error: "No hay certificado disponible. Completa el curso primero." });
       return;
     }
 
-    res.json(certificado[0]);
+    res.json(certificado);
   } catch (error) {
     console.error("Error al obtener certificado:", error);
     res.status(500).json({ error: "Error al obtener certificado" });

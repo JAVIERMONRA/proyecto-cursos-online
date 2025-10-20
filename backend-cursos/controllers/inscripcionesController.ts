@@ -9,63 +9,86 @@ interface Curso extends RowDataPacket {
   id: number;
   titulo: string;
   descripcion: string;
+  nivel?: string;
+  duracion?: number;
+  estado?: string;
+  progreso?: number;
+  completado?: boolean;
 }
 
 /**
- * Permite a un usuario autenticado inscribirse en un curso específico.
- * 
- * - Requiere que el usuario esté autenticado.
- * - Registra la inscripción en la tabla `inscripciones`.
- * - Controla si el usuario ya se encuentra inscrito en el curso.
+ * Estructura de inscripción (opcional, para consultas internas).
+ */
+interface Inscripcion extends RowDataPacket {
+  id: number;
+  usuarioId: number;
+  cursoId: number;
+  progreso?: number;
+  completado?: boolean;
+  fechaInscripcion?: string;
+}
+
+/**
+ * Inscribe al usuario autenticado en el curso indicado.
+ * POST /inscripciones/:cursoId
  */
 export const inscribirseCurso = async (req: Request, res: Response): Promise<void> => {
-  const usuarioId = req.user?.id;
-  const { cursoId } = req.params;
-
-  if (!usuarioId) {
-    res.status(401).json({ error: "No autenticado" });
-    return;
-  }
-
   try {
-    await pool.query(
-      "INSERT INTO inscripciones (usuarioId, cursoId) VALUES (?, ?)",
+    const { cursoId } = req.params;
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      res.status(401).json({ error: "No autenticado" });
+      return;
+    }
+
+    // Verificar si ya existe la inscripción
+    const [existe] = await pool.query<Inscripcion[]>(
+      "SELECT * FROM inscripciones WHERE usuarioId = ? AND cursoId = ?",
       [usuarioId, cursoId]
     );
-    res.json({ message: "Inscripción exitosa" });
-  } catch (error: any) {
-    if (error.code === "ER_DUP_ENTRY") {
+
+    if (existe.length > 0) {
       res.status(400).json({ error: "Ya estás inscrito en este curso" });
       return;
     }
+
+    // Insertar inscripción (progreso por defecto 0)
+    await pool.query(
+      "INSERT INTO inscripciones (usuarioId, cursoId, progreso, completado, fechaInscripcion) VALUES (?, ?, 0, 0, NOW())",
+      [usuarioId, cursoId]
+    );
+
+    res.json({ message: "Inscripción exitosa" });
+  } catch (error) {
     console.error("Error al inscribirse:", error);
     res.status(500).json({ error: "Error al inscribirse en el curso" });
   }
 };
 
 /**
- * Obtiene todos los cursos en los que el usuario autenticado se encuentra inscrito.
- * 
- * - Verifica autenticación del usuario.
- * - Realiza una unión entre las tablas `cursos` e `inscripciones`.
- * - Retorna la lista de cursos asociados al usuario.
+ * Obtener los cursos en los que está inscrito el usuario.
+ * GET /inscripciones/mis-cursos
  */
 export const obtenerMisCursos = async (req: Request, res: Response): Promise<void> => {
-  const usuarioId = req.user?.id;
-
-  if (!usuarioId) {
-    res.status(401).json({ error: "No autenticado" });
-    return;
-  }
-
   try {
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      res.status(401).json({ error: "No autenticado" });
+      return;
+    }
+
     const [rows] = await pool.query<Curso[]>(
-      `SELECT c.id, c.titulo, c.descripcion 
+      `SELECT c.id, c.titulo, c.descripcion, c.nivel, c.duracion, c.estado,
+              COALESCE(i.progreso, 0) as progreso, COALESCE(i.completado, 0) as completado
        FROM cursos c
-       INNER JOIN inscripciones i ON c.id = i.cursoId
-       WHERE i.usuarioId = ?`,
+       JOIN inscripciones i ON c.id = i.cursoId
+       WHERE i.usuarioId = ?
+       ORDER BY i.fechaInscripcion DESC`,
       [usuarioId]
     );
+
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener mis cursos:", error);
@@ -74,21 +97,19 @@ export const obtenerMisCursos = async (req: Request, res: Response): Promise<voi
 };
 
 /**
- * Permite a un usuario autenticado desinscribirse de un curso.
- * 
- * - Elimina el registro de la tabla `inscripciones`.
- * - Verifica si el usuario realmente estaba inscrito antes de eliminar.
+ * Desinscribir al usuario de un curso.
+ * DELETE /inscripciones/:cursoId
  */
 export const desinscribirseCurso = async (req: Request, res: Response): Promise<void> => {
-  const usuarioId = req.user?.id;
-  const { cursoId } = req.params;
-
-  if (!usuarioId) {
-    res.status(401).json({ error: "No autenticado" });
-    return;
-  }
-
   try {
+    const { cursoId } = req.params;
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      res.status(401).json({ error: "No autenticado" });
+      return;
+    }
+
     const [result] = await pool.query<ResultSetHeader>(
       "DELETE FROM inscripciones WHERE usuarioId = ? AND cursoId = ?",
       [usuarioId, cursoId]

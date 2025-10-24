@@ -70,36 +70,47 @@ const Perfil: React.FC = () => {
   };
 
   const handleUpdateProfile = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: "", text: "" });
+  e.preventDefault();
+  setLoading(true);
+  setMessage({ type: "", text: "" });
 
-    try {
-      const response = await axios.put(
-        "http://localhost:4000/auth/perfil",
-        {
-          nombre: userData.nombre,
-          fotoPerfil: previewImage,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+  try {
+    await axios.put(
+      "http://localhost:4000/auth/perfil",
+      {
+        nombre: userData.nombre,
+        fotoPerfil: previewImage || null, // ✅ Enviar null si no hay imagen
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
 
-      setMessage({ type: "success", text: "✅ Perfil actualizado correctamente" });
-      
-      // Disparar evento para actualizar Sidebar
-      window.dispatchEvent(new Event("userProfileUpdated"));
-      
-      // Recargar datos después de 1 segundo
-      setTimeout(() => fetchUserData(), 1000);
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.error || "Error al actualizar el perfil";
-      setMessage({ type: "error", text: `❌ ${errorMsg}` });
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessage({ type: "success", text: "✅ Perfil actualizado correctamente" });
+    
+    // ✅ Actualizar localStorage con los nuevos datos
+    const updatedUser = {
+      ...userData,
+      fotoPerfil: previewImage || undefined,
+    };
+    
+    // ✅ Disparar evento personalizado con los datos actualizados
+    window.dispatchEvent(new CustomEvent("userProfileUpdated", {
+      detail: updatedUser
+    }));
+    
+    // ✅ Recargar datos del servidor
+    setTimeout(() => {
+      fetchUserData();
+    }, 500);
+    
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.error || "Error al actualizar el perfil";
+    setMessage({ type: "error", text: `❌ ${errorMsg}` });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -236,7 +247,6 @@ const Perfil: React.FC = () => {
                   El correo no puede ser modificado
                 </small>
               </div>
-
               <button type="submit" className="btn-save" disabled={loading}>
                 <Save size={20} />
                 {loading ? "Guardando..." : "Guardar Cambios"}

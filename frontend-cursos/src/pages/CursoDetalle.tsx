@@ -144,41 +144,34 @@ const CursoDetalle: React.FC = () => {
     }
   };
 
-  const descargarCertificado = () => {
-    if (!certificado) return;
+  const descargarCertificado = async () => {
+  if (!certificado) return;
 
-    const contenido = `
-========================================
-     CERTIFICADO DE COMPLETITUD
-========================================
+  try {
+    const response = await axios.get(
+      `http://localhost:4000/progreso/${cursoId}/certificado/pdf`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob', // Importante para descargar archivos
+      }
+    );
 
-Este certificado acredita que:
+    // Crear URL del blob y descargar
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Certificado-${certificado.codigo}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
 
-${certificado.nombre || "Estudiante"}
-
-Ha completado exitosamente el curso:
-
-"${curso?.titulo}"
-
-Código del Certificado: ${certificado.codigo}
-Fecha de Emisión: ${new Date(certificado.fechaEmision).toLocaleDateString('es-ES')}
-
-Este certificado verifica que el participante ha 
-demostrado competencia en todos los módulos del curso.
-
-========================================
-       CursosOnline Platform
-========================================
-    `.trim();
-
-    const element = document.createElement("a");
-    const file = new Blob([contenido], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `Certificado-${certificado.codigo}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
+    console.log("✅ Certificado descargado exitosamente");
+  } catch (error) {
+    console.error("❌ Error al descargar certificado:", error);
+    alert("Error al descargar el certificado. Intenta de nuevo.");
+  }
+};
 
   if (loading) {
     return (

@@ -291,3 +291,170 @@ export const obtenerMisCertificados = async (
     res.status(500).json({ error: "Error al obtener certificados" });
   }
 };
+
+/**
+ * Generar y descargar certificado en PDF
+ */
+export const descargarCertificadoPDF = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { cursoId } = req.params;
+    const usuarioId = req.user?.id;
+
+    if (!usuarioId) {
+      res.status(401).json({ error: "No autenticado" });
+      return;
+    }
+
+    // Obtener datos del certificado
+    const [[certificado]] = await pool.query<RowDataPacket[]>(
+      `SELECT c.codigo, c.fechaEmision, u.nombre, cu.titulo
+       FROM certificados c
+       INNER JOIN inscripciones i ON c.inscripcionId = i.id
+       INNER JOIN usuarios u ON i.usuarioId = u.id
+       INNER JOIN cursos cu ON i.cursoId = cu.id
+       WHERE i.usuarioId = ? AND i.cursoId = ?`,
+      [usuarioId, cursoId]
+    );
+
+    if (!certificado) {
+      res.status(404).json({ error: "No hay certificado disponible" });
+      return;
+    }
+
+    // Importar PDFKit dinámicamente
+    const PDFDocument = (await import("pdfkit")).default;
+    const doc = new PDFDocument({
+      size: "A4",
+      layout: "landscape",
+      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    });
+
+    // Configurar headers para descarga
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Certificado-${certificado.codigo}.pdf`
+    );
+
+    // Pipe del PDF a la respuesta
+    doc.pipe(res);
+
+    // === DISEÑO DEL CERTIFICADO ===
+
+    // Borde decorativo
+    doc
+      .roundedRect(30, 30, doc.page.width - 60, doc.page.height - 60, 10)
+      .lineWidth(3)
+      .strokeColor("#3b82f6")
+      .stroke();
+
+    doc
+      .roundedRect(40, 40, doc.page.width - 80, doc.page.height - 80, 10)
+      .lineWidth(1)
+      .strokeColor("#8b5cf6")
+      .stroke();
+
+    // Título principal
+    doc
+      .fontSize(40)
+      .font("Helvetica-Bold")
+      .fillColor("#1a1d29")
+      .text("CursosOnline", 0, 100, {
+        align: "center",
+      });
+
+    doc
+      .fontSize(16)
+      .font("Helvetica")
+      .fillColor("#6c757d")
+      .text("Transformando vidas a través de la educación online de calidad", 0, 160, {
+        align: "center",
+      });
+
+    // Línea decorativa
+    doc
+      .moveTo(250, 200)
+      .lineTo(doc.page.width - 250, 200)
+      .lineWidth(2)
+      .strokeColor("#3b82f6")
+      .stroke();
+
+    // Texto "Hace constar que"
+    doc
+      .fontSize(16)
+      .font("Helvetica")
+      .fillColor("#6c757d")
+      .text("Hace contar que", 0, 240, {
+        align: "center",
+      });
+
+    // Nombre del estudiante
+    doc
+      .fontSize(32)
+      .font("Helvetica-Bold")
+      .fillColor("#3b82f6")
+      .text(certificado.nombre, 0, 280, {
+        align: "center",
+      });
+
+    // Texto "Cursó y aprobó:"
+    doc
+      .fontSize(16)
+      .font("Helvetica")
+      .fillColor("#6c757d")
+      .text("Cursó y aprobó:", 0, 330, {
+        align: "center",
+      });
+
+    // Título del curso
+    doc
+      .fontSize(24)
+      .font("Helvetica-Bold")
+      .fillColor("#1a1d29")
+      .text(`${certificado.titulo}`, 0, 370, {
+        align: "center",
+      });
+
+    // Fecha de emisión
+    const fecha = new Date(certificado.fechaEmision).toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    doc
+      .fontSize(14)
+      .font("Helvetica")
+      .fillColor("#6c757d")
+      .text(`Finalizado el  ${fecha}`, 0, 440, {
+        align: "center",
+      });
+
+    // Código de certificado
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#8b5cf6")
+      .text(`Código de verificación: ${certificado.codigo}`, 0, 470, {
+        align: "center",
+      });
+
+    // Footer
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor("#a1a1aa")
+      .text("CursosOnline Platform", 0, doc.page.height - 80, {
+        align: "center",
+      });
+
+    // Finalizar el documento
+    doc.end();
+  } catch (error) {
+    console.error("Error al generar certificado PDF:", error);
+    res.status(500).json({ error: "Error al generar certificado" });
+  }
+};

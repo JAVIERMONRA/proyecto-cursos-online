@@ -259,3 +259,34 @@ body.dark .sidebar {
     z-index: 999;
   }
 }
+
+/* ✅ Mejorar visualización de imagen de avatar */
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  overflow: hidden;
+  position: relative;
+  color: white;
+}
+
+/* ✅ Asegurar que la imagen no se deforme */
+.user-avatar img {
+  display: block;
+}

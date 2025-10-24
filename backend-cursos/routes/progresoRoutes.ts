@@ -5,6 +5,7 @@ import {
   marcarLeccionCompletada,
   obtenerCertificado,
   obtenerMisCertificados,
+  descargarCertificadoPDF,
 } from "../controllers/progresoController.js";
 
 const router = express.Router();
@@ -29,5 +30,7 @@ router.get("/:cursoId/certificado", verificarToken, obtenerCertificado);
 
 // Obtener todos los certificados del usuario
 router.get("/mis-certificados/listar", verificarToken, obtenerMisCertificados);
+
+router.get("/:cursoId/certificado/pdf", verificarToken, descargarCertificadoPDF);
 
 export default router;

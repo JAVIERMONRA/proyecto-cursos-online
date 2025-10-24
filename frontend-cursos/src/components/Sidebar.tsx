@@ -38,22 +38,35 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
     fotoPerfil: undefined,
   });
 
-  const [refreshKey, setRefreshKey] = useState(0);
-  
   const location = useLocation();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
+  // ✅ Cargar datos al montar y cuando se actualice el perfil
   useEffect(() => {
     fetchUserData();
     
-    const handleUserUpdate = () => {
-      fetchUserData();
-      setRefreshKey(prev => prev + 1);
+    // ✅ Escuchar eventos de actualización
+    const handleUserUpdate = (event: any) => {
+      console.log("🔄 Evento de actualización recibido:", event.detail);
+      
+      if (event.detail) {
+        // Actualizar desde el evento
+        setUserData({
+          nombre: event.detail.nombre || userData.nombre,
+          fotoPerfil: event.detail.fotoPerfil || undefined,
+        });
+      } else {
+        // Recargar desde el servidor
+        fetchUserData();
+      }
     };
     
     window.addEventListener("userProfileUpdated", handleUserUpdate);
-    return () => window.removeEventListener("userProfileUpdated", handleUserUpdate);
+    
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleUserUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -65,6 +78,8 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
   }, [darkMode]);
 
   const fetchUserData = async () => {
+    if (!token) return;
+    
     try {
       const response = await fetch("http://localhost:4000/auth/perfil", {
         headers: {
@@ -75,13 +90,15 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Datos de usuario cargados:", data);
+        
         setUserData({
           nombre: data.nombre || (rol === "admin" ? "Administrador" : "Estudiante"),
           fotoPerfil: data.fotoPerfil || undefined,
         });
       }
     } catch (error) {
-      console.error("Error al cargar datos del usuario:", error);
+      console.error("❌ Error al cargar datos del usuario:", error);
     }
   };
 
@@ -100,7 +117,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
     localStorage.setItem("theme", newMode ? "dark" : "light");
   };
 
-  // Menús según el rol
   const menuItems = rol === "admin" 
     ? [
         { path: "/admin/cursos", icon: List, label: "Gestionar Cursos" },
@@ -117,9 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
 
   return (
     <>
-      {/* Sidebar */}
-      <div key={refreshKey} className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-        {/* Header */}
+      <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand">
             <GraduationCap size={32} className="brand-icon" />
@@ -134,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
           </button>
         </div>
 
-        {/* User Info - ACTUALIZADO */}
+        {/* ✅ User Info con foto actualizada */}
         <div className="sidebar-user">
           <div className="user-avatar">
             {userData.fotoPerfil ? (
@@ -143,11 +157,12 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
                 alt="Perfil"
                 className="avatar-image"
                 title={userData.nombre}
+                key={userData.fotoPerfil} // ✅ Forzar re-render cuando cambie
               />
             ) : (
-              <>
-                {rol === "admin" ? "A" : "E"}
-              </>
+              <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                {userData.nombre.charAt(0).toUpperCase()}
+              </span>
             )}
           </div>
           {!collapsed && (
@@ -160,7 +175,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="sidebar-nav">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -180,7 +194,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
           })}
         </nav>
 
-        {/* Footer */}
         <div className="sidebar-footer">
           <button 
             className="nav-item" 
@@ -204,7 +217,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
         </div>
       </div>
 
-      {/* Overlay para móvil */}
       {!collapsed && (
         <div 
           className="sidebar-overlay"

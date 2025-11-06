@@ -5,9 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminCursos from "./pages/AdminCursos";
-import AdminDashboard from "./pages/AdminDashboard";
 import AdminCrearCurso from "./pages/AdminCrearCurso";
-import AdminEstadisticas from "./pages/AdminEstadisticas";
 import AdminUsuarios from "./pages/AdminUsuarios";
 import AdminPerfil from "./pages/AdminPerfil";
 import MisCursos from "./pages/MisCursos";
@@ -83,14 +81,6 @@ const App: React.FC = () => {
 
           {/* ========== RUTAS DE ADMIN ========== */}
           <Route
-            path="/admin/dashboard"
-            element={
-              <RutaAdmin>
-                <AdminDashboard />
-              </RutaAdmin>
-            }
-          />
-          <Route
             path="/admin/cursos"
             element={
               <RutaAdmin>
@@ -103,14 +93,6 @@ const App: React.FC = () => {
             element={
               <RutaAdmin>
                 <AdminCrearCurso />
-              </RutaAdmin>
-            }
-          />
-          <Route
-            path="/admin/estadisticas"
-            element={
-              <RutaAdmin>
-                <AdminEstadisticas />
               </RutaAdmin>
             }
           />
@@ -137,7 +119,7 @@ const App: React.FC = () => {
             element={
               isAuthenticated ? (
                 user?.role === "admin" ? (
-                  <Navigate to="/admin/dashboard" replace />
+                  <Navigate to="/admin/cursos" replace />
                 ) : (
                   <Navigate to="/mis-cursos" replace />
                 )

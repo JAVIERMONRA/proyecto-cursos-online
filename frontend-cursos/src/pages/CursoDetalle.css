@@ -46,10 +46,9 @@ body.dark .curso-header {
 }
 
 .curso-titulo {
-  font-size: 2rem;
   font-weight: 700;
   color: #1a1d29;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0rem;
 }
 
 body.dark .curso-titulo {

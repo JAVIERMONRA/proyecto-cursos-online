@@ -1,67 +1,90 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DashboardLayout from "../components/DashboardLayout";
-import { Users, UserCheck, Shield, Trash2, Search } from "lucide-react";
-import "./AdminDashboard.css";
+import { Users, UserCheck, Search, TrendingUp, AlertCircle, BookOpen } from "lucide-react";
+import "./AdminUsuarios.css";
 
-interface Usuario {
+interface InscripcionDetallada {
   id: number;
+  usuarioId: number;
   nombre: string;
   email: string;
-  rol: "admin" | "estudiante";
-  createdAt: string;
+  fotoPerfil?: string;
+  cursoId: number;
+  cursoTitulo: string;
+  progreso: number;
+  completado: boolean;
+  fechaInscripcion: string;
+}
+
+interface EstadisticasResumen {
+  totalEstudiantes: number;
+  totalInscripciones: number;
+  promedioProgreso: number;
+  cursosCompletados: number;
 }
 
 function AdminUsuarios() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [inscripciones, setInscripciones] = useState<InscripcionDetallada[]>([]);
+  const [stats, setStats] = useState<EstadisticasResumen>({
+    totalEstudiantes: 0,
+    totalInscripciones: 0,
+    promedioProgreso: 0,
+    cursosCompletados: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
   
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    fetchUsuarios();
+    fetchInscripciones();
   }, []);
 
-  const fetchUsuarios = async () => {
+  const fetchInscripciones = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/admin/usuarios", {
+      const response = await axios.get("http://localhost:4000/admin/inscripciones-detalladas", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUsuarios(res.data);
+
+      setInscripciones(response.data.inscripciones);
+      setStats(response.data.estadisticas);
     } catch (error) {
-      console.error("Error al cargar usuarios:", error);
+      console.error("Error al cargar inscripciones:", error);
+      setMensaje({ tipo: "error", texto: "Error al cargar las inscripciones" });
     } finally {
       setLoading(false);
     }
   };
 
-  const eliminarUsuario = async (id: number) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este usuario?")) return;
-    
-    try {
-      await axios.delete(`http://localhost:4000/admin/usuarios/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUsuarios(usuarios.filter((u) => u.id !== id));
-      alert("✅ Usuario eliminado correctamente");
-    } catch (error) {
-      alert("❌ Error al eliminar usuario");
-    }
+  const inscripcionesFiltradas = inscripciones.filter(
+    (insc) =>
+      insc.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      insc.email.toLowerCase().includes(busqueda.toLowerCase()) ||
+      insc.cursoTitulo.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
+  const getProgresoColor = (porcentaje: number) => {
+    if (porcentaje >= 75) return "#10b981"; // Verde
+    if (porcentaje >= 50) return "#3b82f6"; // Azul
+    if (porcentaje >= 25) return "#f59e0b"; // Amarillo
+    return "#ef4444"; // Rojo
   };
 
-  const usuariosFiltrados = usuarios.filter(
-    (usuario) =>
-      usuario.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      usuario.email.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const getProgresoBadgeClass = (porcentaje: number) => {
+    if (porcentaje >= 75) return "badge-progreso-alto";
+    if (porcentaje >= 50) return "badge-progreso-medio";
+    if (porcentaje >= 25) return "badge-progreso-bajo";
+    return "badge-progreso-muy-bajo";
+  };
 
   if (loading) {
     return (
       <DashboardLayout rol="admin">
         <div className="loading-container">
           <div className="spinner"></div>
-          <p>Cargando usuarios...</p>
+          <p>Cargando inscripciones...</p>
         </div>
       </DashboardLayout>
     );
@@ -69,13 +92,20 @@ function AdminUsuarios() {
 
   return (
     <DashboardLayout rol="admin">
-      <div className="admin-dashboard">
-        <div className="dashboard-header">
+      <div className="admin-usuarios-page">
+        <div className="page-header">
           <div>
-            <h1 className="dashboard-title">👥 Gestión de Usuarios</h1>
-            <p className="dashboard-subtitle">Administra los usuarios de la plataforma</p>
+            <h1 className="page-title">👥 Inscripciones de Estudiantes</h1>
+            <p className="page-subtitle">Monitorea el progreso de cada estudiante en sus cursos</p>
           </div>
         </div>
+
+        {mensaje && (
+          <div className={`alert alert-${mensaje.tipo}`}>
+            <AlertCircle size={20} />
+            <span>{mensaje.texto}</span>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="stats-grid">
@@ -84,42 +114,52 @@ function AdminUsuarios() {
               <Users size={28} />
             </div>
             <div className="stat-content">
-              <p className="stat-label">Total Usuarios</p>
-              <p className="stat-value">{usuarios.length}</p>
+              <p className="stat-label">Total Estudiantes</p>
+              <p className="stat-value">{stats.totalEstudiantes}</p>
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-icon" style={{ background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" }}>
-              <UserCheck size={28} />
+              <BookOpen size={28} />
             </div>
             <div className="stat-content">
-              <p className="stat-label">Estudiantes</p>
-              <p className="stat-value">{usuarios.filter(u => u.rol === "estudiante").length}</p>
+              <p className="stat-label">Total Inscripciones</p>
+              <p className="stat-value">{stats.totalInscripciones}</p>
             </div>
           </div>
 
           <div className="stat-card">
             <div className="stat-icon" style={{ background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" }}>
-              <Shield size={28} />
+              <TrendingUp size={28} />
             </div>
             <div className="stat-content">
-              <p className="stat-label">Administradores</p>
-              <p className="stat-value">{usuarios.filter(u => u.rol === "admin").length}</p>
+              <p className="stat-label">Progreso Promedio</p>
+              <p className="stat-value">{stats.promedioProgreso}%</p>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" }}>
+              <UserCheck size={28} />
+            </div>
+            <div className="stat-content">
+              <p className="stat-label">Cursos Completados</p>
+              <p className="stat-value">{stats.cursosCompletados}</p>
             </div>
           </div>
         </div>
 
-        {/* Tabla de Usuarios */}
+        {/* Tabla de Inscripciones */}
         <div className="table-section">
           <div className="table-header">
-            <h2 className="section-title">Lista de Usuarios</h2>
+            <h2 className="section-title">Inscripciones Activas</h2>
             <div className="search-box">
               <Search size={20} className="search-icon" />
               <input
                 type="text"
                 className="table-search"
-                placeholder="Buscar usuarios..."
+                placeholder="Buscar por estudiante o curso..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
               />
@@ -131,44 +171,70 @@ function AdminUsuarios() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Nombre</th>
+                  <th>Estudiante</th>
                   <th>Email</th>
-                  <th>Rol</th>
-                  <th>Fecha de Registro</th>
-                  <th className="text-center">Acciones</th>
+                  <th>Curso</th>
+                  <th className="text-center">Progreso</th>
                 </tr>
               </thead>
               <tbody>
-                {usuariosFiltrados.length === 0 ? (
+                {inscripcionesFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center">
+                    <td colSpan={5} className="text-center">
                       <div className="empty-state">
                         <Users size={48} />
-                        <p>No se encontraron usuarios</p>
+                        <p>No se encontraron inscripciones</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  usuariosFiltrados.map((usuario) => (
-                    <tr key={usuario.id}>
-                      <td>#{usuario.id}</td>
-                      <td>{usuario.nombre}</td>
-                      <td>{usuario.email}</td>
+                  inscripcionesFiltradas.map((insc) => (
+                    <tr key={`${insc.usuarioId}-${insc.cursoId}`}>
+                      <td>#{insc.usuarioId}</td>
                       <td>
-                        <span className={`badge ${usuario.rol === "admin" ? "badge-active" : ""}`}>
-                          {usuario.rol === "admin" ? "🛡️ Admin" : "👨‍🎓 Estudiante"}
-                        </span>
+                        <div className="usuario-info">
+                          <div className="usuario-avatar">
+                            {insc.fotoPerfil ? (
+                              <img 
+                                src={insc.fotoPerfil} 
+                                alt={insc.nombre}
+                                className="avatar-image"
+                              />
+                            ) : (
+                              insc.nombre.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <span className="usuario-nombre">{insc.nombre}</span>
+                        </div>
                       </td>
-                      <td>{new Date(usuario.createdAt).toLocaleDateString()}</td>
                       <td>
-                        <div className="action-buttons">
-                          <button
-                            className="btn-action btn-delete"
-                            onClick={() => eliminarUsuario(usuario.id)}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                        <span className="usuario-email">{insc.email}</span>
+                      </td>
+                      <td>
+                        <div className="curso-info-cell">
+                          <BookOpen size={16} className="curso-icon" />
+                          <span className="curso-nombre">{insc.cursoTitulo}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="progreso-container">
+                          <div className="progreso-info">
+                            <span className={`badge-progreso ${getProgresoBadgeClass(insc.progreso)}`}>
+                              {insc.progreso}%
+                            </span>
+                            {insc.completado && (
+                              <span className="badge-completado">✓ Completado</span>
+                            )}
+                          </div>
+                          <div className="progreso-bar">
+                            <div 
+                              className="progreso-bar-fill"
+                              style={{ 
+                                width: `${insc.progreso}%`,
+                                background: getProgresoColor(insc.progreso)
+                              }}
+                            ></div>
+                          </div>
                         </div>
                       </td>
                     </tr>

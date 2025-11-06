@@ -21,6 +21,7 @@ interface UsuarioReciente extends RowDataPacket {
   email: string;
   rol: string;
   fechaRegistro: Date;
+  fotoPerfil?: string;
 }
 
 interface InscripcionMensual extends RowDataPacket {
@@ -123,7 +124,7 @@ export const obtenerEstadisticas = async (req: Request, res: Response): Promise<
 export const obtenerUsuarios = async (req: Request, res: Response): Promise<void> => {
   try {
     const [usuarios] = await pool.query<UsuarioReciente[]>(
-      `SELECT id, nombre, email, rol, fechaRegistro
+      `SELECT id, nombre, email, rol, fechaRegistro, fotoPerfil
       FROM usuarios
       ORDER BY fechaRegistro DESC`
     );
@@ -163,5 +164,116 @@ export const eliminarUsuario = async (req: Request, res: Response): Promise<void
   } catch (error) {
     console.error("Error al eliminar usuario:", error);
     res.status(500).json({ error: "Error al eliminar usuario" });
+  }
+};
+
+/**
+ * Obtener progreso de un estudiante específico
+ */
+export const obtenerProgresoEstudiante = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el usuario existe y es estudiante
+    const [[usuario]] = await pool.query<RowDataPacket[]>(
+      "SELECT rol FROM usuarios WHERE id = ?",
+      [id]
+    );
+
+    if (!usuario) {
+      res.status(404).json({ error: "Usuario no encontrado" });
+      return;
+    }
+
+    if (usuario.rol !== "estudiante") {
+      res.status(400).json({ error: "El usuario no es un estudiante" });
+      return;
+    }
+
+    // Obtener total de cursos inscritos
+    const [[totalInscritos]] = await pool.query<StatsResult[]>(
+      "SELECT COUNT(*) as count FROM inscripciones WHERE usuarioId = ?",
+      [id]
+    );
+
+    // Obtener cursos completados (progreso = 100)
+    const [[cursosCompletados]] = await pool.query<StatsResult[]>(
+      "SELECT COUNT(*) as count FROM inscripciones WHERE usuarioId = ? AND progreso = 100",
+      [id]
+    );
+
+    // Obtener promedio de progreso
+    const [[promedioProgreso]] = await pool.query<StatsResult[]>(
+      "SELECT COALESCE(AVG(progreso), 0) as count FROM inscripciones WHERE usuarioId = ?",
+      [id]
+    );
+
+    res.json({
+      usuarioId: parseInt(id),
+      totalCursosInscritos: totalInscritos.count || 0,
+      cursosCompletados: cursosCompletados.count || 0,
+      porcentajePromedio: Math.round(promedioProgreso.count || 0)
+    });
+
+  } catch (error) {
+    console.error("Error al obtener progreso:", error);
+    res.status(500).json({ error: "Error al obtener el progreso del estudiante" });
+  }
+};
+
+/**
+ * Obtener todas las inscripciones con detalles de estudiantes y cursos
+ */
+export const obtenerInscripcionesDetalladas = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Obtener todas las inscripciones con datos de usuario y curso
+    const [inscripciones] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+        i.id,
+        u.id as usuarioId,
+        u.nombre,
+        u.email,
+        u.fotoPerfil,
+        c.id as cursoId,
+        c.titulo as cursoTitulo,
+        i.progreso,
+        i.completado,
+        i.fechaInscripcion
+      FROM inscripciones i
+      INNER JOIN usuarios u ON i.usuarioId = u.id
+      INNER JOIN cursos c ON i.cursoId = c.id
+      WHERE u.rol = 'estudiante'
+      ORDER BY i.fechaInscripcion DESC`
+    );
+
+    // Calcular estadísticas
+    const [[totalEstudiantes]] = await pool.query<StatsResult[]>(
+      "SELECT COUNT(DISTINCT id) as count FROM usuarios WHERE rol = 'estudiante'"
+    );
+
+    const [[totalInscripciones]] = await pool.query<StatsResult[]>(
+      "SELECT COUNT(*) as count FROM inscripciones"
+    );
+
+    const [[promedioProgreso]] = await pool.query<StatsResult[]>(
+      "SELECT COALESCE(AVG(progreso), 0) as count FROM inscripciones"
+    );
+
+    const [[cursosCompletados]] = await pool.query<StatsResult[]>(
+      "SELECT COUNT(*) as count FROM inscripciones WHERE completado = 1"
+    );
+
+    res.json({
+      inscripciones,
+      estadisticas: {
+        totalEstudiantes: totalEstudiantes.count || 0,
+        totalInscripciones: totalInscripciones.count || 0,
+        promedioProgreso: Math.round(promedioProgreso.count || 0),
+        cursosCompletados: cursosCompletados.count || 0,
+      }
+    });
+  } catch (error) {
+    console.error("Error al obtener inscripciones detalladas:", error);
+    res.status(500).json({ error: "Error al obtener inscripciones" });
   }
 };

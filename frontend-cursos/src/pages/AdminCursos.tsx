@@ -5,9 +5,14 @@ import {
   BookOpen,
   Edit,
   Trash2,
-  Search
+  Search,
+  Plus,
+  X,
+  Save,
+  AlertCircle
 } from "lucide-react";
-import "./AdminDashboard.css";
+import { useNavigate } from "react-router-dom";
+import "./AdminCursos.css";
 
 interface Seccion {
   id: number;
@@ -19,6 +24,8 @@ interface Curso {
   id: number;
   titulo: string;
   descripcion: string;
+  nivel?: "principiante" | "intermedio" | "avanzado";
+  duracion?: number;
   secciones?: Seccion[];
 }
 
@@ -26,13 +33,29 @@ function AdminCursos() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [cursoEditando, setCursoEditando] = useState<Curso | null>(null);
   const [loading, setLoading] = useState(true);
+  const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [mensaje, setMensaje] = useState<{ tipo: "success" | "error"; texto: string } | null>(null);
   
   const token = localStorage.getItem("token");
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCursos();
   }, []);
+
+  // Bloquear scroll cuando el modal está abierto
+  useEffect(() => {
+    if (cursoEditando) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [cursoEditando]);
 
   const fetchCursos = async () => {
     try {
@@ -42,6 +65,7 @@ function AdminCursos() {
       setCursos(response.data);
     } catch (error) {
       console.error("Error al cargar cursos:", error);
+      setMensaje({ tipo: "error", texto: "Error al cargar los cursos" });
     } finally {
       setLoading(false);
     }
@@ -55,9 +79,11 @@ function AdminCursos() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setCursos(cursos.filter((c) => c.id !== id));
-      alert("✅ Curso eliminado correctamente");
+      setMensaje({ tipo: "success", texto: "✅ Curso eliminado correctamente" });
+      setTimeout(() => setMensaje(null), 3000);
     } catch (error) {
-      alert("❌ Error al eliminar curso");
+      setMensaje({ tipo: "error", texto: "❌ Error al eliminar curso" });
+      setTimeout(() => setMensaje(null), 3000);
     }
   };
 
@@ -66,35 +92,90 @@ function AdminCursos() {
       const res = await axios.get(`http://localhost:4000/cursos/completo/${curso.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setCursoEditando(res.data);
+      setCursoEditando({
+        ...res.data,
+        nivel: res.data.nivel || "principiante",
+        duracion: res.data.duracion || 0
+      });
     } catch (error) {
-      console.error("Error al cargar curso con secciones:", error);
-      alert("No se pudo cargar la información completa del curso");
+      console.error("Error al cargar curso:", error);
+      setCursoEditando({
+        ...curso,
+        nivel: curso.nivel || "principiante",
+        duracion: curso.duracion || 0,
+        secciones: []
+      });
     }
   };
 
   const guardarCambios = async () => {
     if (!cursoEditando) return;
 
+    if (!cursoEditando.titulo.trim()) {
+      setMensaje({ tipo: "error", texto: "❌ El título no puede estar vacío" });
+      return;
+    }
+
+    if (!cursoEditando.descripcion.trim()) {
+      setMensaje({ tipo: "error", texto: "❌ La descripción no puede estar vacía" });
+      return;
+    }
+
+    setGuardando(true);
+    setMensaje(null);
+
     try {
+      // Actualizar información básica del curso
       await axios.put(
         `http://localhost:4000/cursos/${cursoEditando.id}`,
         {
           titulo: cursoEditando.titulo,
           descripcion: cursoEditando.descripcion,
-          nivel: "principiante",
-          duracion: 0,
+          nivel: cursoEditando.nivel || "principiante",
+          duracion: cursoEditando.duracion || 0,
           estado: "activo"
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
 
-      alert("✅ Curso actualizado correctamente");
+      // Actualizar cada sección si existen
+      if (cursoEditando.secciones && cursoEditando.secciones.length > 0) {
+        for (const seccion of cursoEditando.secciones) {
+          if (!seccion.subtitulo.trim() || !seccion.descripcion.trim()) {
+            continue;
+          }
+
+          await axios.put(
+            `http://localhost:4000/cursos/${cursoEditando.id}/secciones/${seccion.id}`,
+            {
+              subtitulo: seccion.subtitulo,
+              descripcion: seccion.descripcion
+            },
+            { 
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              } 
+            }
+          );
+        }
+      }
+
+      setMensaje({ tipo: "success", texto: "✅ Curso actualizado correctamente" });
       setCursoEditando(null);
       fetchCursos();
-    } catch (error) {
+      setTimeout(() => setMensaje(null), 3000);
+    } catch (error: any) {
       console.error("Error al actualizar curso:", error);
-      alert("❌ No se pudo actualizar el curso");
+      const errorMsg = error.response?.data?.error || "Error al actualizar el curso";
+      setMensaje({ tipo: "error", texto: `❌ ${errorMsg}` });
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -117,19 +198,34 @@ function AdminCursos() {
 
   return (
     <DashboardLayout rol="admin">
-      <div className="admin-dashboard">
+      <div className="admin-cursos-page">
         {/* Header */}
-        <div className="dashboard-header">
+        <div className="page-header">
           <div>
-            <h1 className="dashboard-title">📚 Gestión de Cursos</h1>
-            <p className="dashboard-subtitle">Administra todos los cursos de la plataforma</p>
+            <h1 className="page-title">📚 Gestión de Cursos</h1>
+            <p className="page-subtitle">Administra todos los cursos de la plataforma</p>
           </div>
+          <button 
+            className="btn-create"
+            onClick={() => navigate("/admin/crear-curso")}
+          >
+            <Plus size={20} />
+            Crear Nuevo Curso
+          </button>
         </div>
+
+        {/* Mensaje de alerta */}
+        {mensaje && (
+          <div className={`alert alert-${mensaje.tipo}`}>
+            <AlertCircle size={20} />
+            <span>{mensaje.texto}</span>
+          </div>
+        )}
 
         {/* Estadísticas rápidas */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-icon" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+            <div className="stat-icon">
               <BookOpen size={28} />
             </div>
             <div className="stat-content">
@@ -162,6 +258,7 @@ function AdminCursos() {
                   <th>ID</th>
                   <th>Título del Curso</th>
                   <th>Descripción</th>
+                  <th>Nivel</th>
                   <th>Estado</th>
                   <th className="text-center">Acciones</th>
                 </tr>
@@ -169,7 +266,7 @@ function AdminCursos() {
               <tbody>
                 {cursosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center">
+                    <td colSpan={6} className="text-center">
                       <div className="empty-state">
                         <BookOpen size={48} />
                         <p>No hay cursos disponibles</p>
@@ -190,6 +287,11 @@ function AdminCursos() {
                           {curso.descripcion.length > 80 
                             ? `${curso.descripcion.substring(0, 80)}...` 
                             : curso.descripcion}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge-nivel badge-${curso.nivel || 'principiante'}`}>
+                          {curso.nivel || 'principiante'}
                         </span>
                       </td>
                       <td>
@@ -223,34 +325,45 @@ function AdminCursos() {
 
         {/* Modal de Edición */}
         {cursoEditando && (
-          <div className="modal-overlay">
-            <div className="modal">
+          <div 
+            className="modal-overlay"
+            onClick={() => !guardando && setCursoEditando(null)}
+          >
+            <div 
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="modal-header">
                 <h3>✏️ Editar Curso</h3>
                 <button 
                   className="modal-close"
                   onClick={() => setCursoEditando(null)}
+                  disabled={guardando}
                 >
-                  ×
+                  <X size={24} />
                 </button>
               </div>
 
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Título del curso</label>
+                  <label htmlFor="titulo-edit">Título del curso</label>
                   <input
+                    id="titulo-edit"
                     type="text"
                     className="form-input"
                     value={cursoEditando.titulo}
                     onChange={(e) =>
                       setCursoEditando({ ...cursoEditando, titulo: e.target.value })
                     }
+                    placeholder="Ingresa el título del curso"
+                    disabled={guardando}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Descripción</label>
+                  <label htmlFor="descripcion-edit">Descripción</label>
                   <textarea
+                    id="descripcion-edit"
                     className="form-textarea"
                     rows={4}
                     value={cursoEditando.descripcion}
@@ -260,42 +373,93 @@ function AdminCursos() {
                         descripcion: e.target.value,
                       })
                     }
+                    placeholder="Describe el contenido del curso"
+                    disabled={guardando}
                   />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="nivel-edit">Nivel</label>
+                    <select
+                      id="nivel-edit"
+                      className="form-input"
+                      value={cursoEditando.nivel || "principiante"}
+                      onChange={(e) =>
+                        setCursoEditando({
+                          ...cursoEditando,
+                          nivel: e.target.value as "principiante" | "intermedio" | "avanzado",
+                        })
+                      }
+                      disabled={guardando}
+                    >
+                      <option value="principiante">Principiante</option>
+                      <option value="intermedio">Intermedio</option>
+                      <option value="avanzado">Avanzado</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="duracion-edit">Duración (horas)</label>
+                    <input
+                      id="duracion-edit"
+                      type="number"
+                      className="form-input"
+                      min="0"
+                      value={cursoEditando.duracion || 0}
+                      onChange={(e) =>
+                        setCursoEditando({
+                          ...cursoEditando,
+                          duracion: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      disabled={guardando}
+                    />
+                  </div>
                 </div>
 
                 {cursoEditando.secciones && cursoEditando.secciones.length > 0 && (
                   <div className="form-group">
-                    <label>Secciones del Curso</label>
-                    {cursoEditando.secciones.map((sec, index) => (
-                      <div key={index} className="seccion-item">
-                        <input
-                          type="text"
-                          className="form-input mb-2"
-                          value={sec.subtitulo}
-                          onChange={(e) => {
-                            const nuevasSecciones = [...(cursoEditando.secciones || [])];
-                            nuevasSecciones[index].subtitulo = e.target.value;
-                            setCursoEditando({ 
-                              ...cursoEditando, 
-                              secciones: nuevasSecciones 
-                            });
-                          }}
-                        />
-                        <textarea
-                          className="form-textarea"
-                          rows={2}
-                          value={sec.descripcion}
-                          onChange={(e) => {
-                            const nuevasSecciones = [...(cursoEditando.secciones || [])];
-                            nuevasSecciones[index].descripcion = e.target.value;
-                            setCursoEditando({ 
-                              ...cursoEditando, 
-                              secciones: nuevasSecciones 
-                            });
-                          }}
-                        />
-                      </div>
-                    ))}
+                    <label>Secciones del Curso ({cursoEditando.secciones.length})</label>
+                    <div className="secciones-list">
+                      {cursoEditando.secciones.map((sec, index) => (
+                        <div key={sec.id} className="seccion-item-edit">
+                          <div className="seccion-header-edit">
+                            <strong>Sección {index + 1}</strong>
+                          </div>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={sec.subtitulo}
+                            onChange={(e) => {
+                              const nuevasSecciones = [...(cursoEditando.secciones || [])];
+                              nuevasSecciones[index].subtitulo = e.target.value;
+                              setCursoEditando({ 
+                                ...cursoEditando, 
+                                secciones: nuevasSecciones 
+                              });
+                            }}
+                            placeholder="Título de la sección"
+                            disabled={guardando}
+                          />
+                          <textarea
+                            className="form-textarea"
+                            rows={2}
+                            value={sec.descripcion}
+                            onChange={(e) => {
+                              const nuevasSecciones = [...(cursoEditando.secciones || [])];
+                              nuevasSecciones[index].descripcion = e.target.value;
+                              setCursoEditando({ 
+                                ...cursoEditando, 
+                                secciones: nuevasSecciones 
+                              });
+                            }}
+                            placeholder="Descripción de la sección"
+                            disabled={guardando}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -304,11 +468,26 @@ function AdminCursos() {
                 <button
                   className="btn-cancel"
                   onClick={() => setCursoEditando(null)}
+                  disabled={guardando}
                 >
                   Cancelar
                 </button>
-                <button className="btn-save" onClick={guardarCambios}>
-                  💾 Guardar Cambios
+                <button 
+                  className="btn-save" 
+                  onClick={guardarCambios}
+                  disabled={guardando}
+                >
+                  {guardando ? (
+                    <>
+                      <div className="spinner-small"></div>
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={20} />
+                      Guardar Cambios
+                    </>
+                  )}
                 </button>
               </div>
             </div>

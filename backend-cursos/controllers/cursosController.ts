@@ -153,6 +153,56 @@ export const actualizarCurso = async (req: Request, res: Response): Promise<void
   }
 };
 
+export const actualizarSeccion = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { cursoId, seccionId } = req.params;
+    const { subtitulo, descripcion } = req.body;
+
+    console.log("🔄 Actualizando sección:", { cursoId, seccionId, subtitulo, descripcion });
+
+    if (!subtitulo || !descripcion) {
+      res.status(400).json({ error: "Subtítulo y descripción son requeridos" });
+      return;
+    }
+
+    // Verificar que la sección pertenece al curso
+    const [seccionRows] = await pool.query<RowDataPacket[]>(
+      "SELECT * FROM secciones WHERE id = ? AND cursoId = ?",
+      [seccionId, cursoId]
+    );
+
+    if (seccionRows.length === 0) {
+      res.status(404).json({ error: "Sección no encontrada o no pertenece a este curso" });
+      return;
+    }
+
+    // Actualizar la sección
+    const [result] = await pool.query<ResultSetHeader>(
+      "UPDATE secciones SET subtitulo = ?, descripcion = ? WHERE id = ?",
+      [subtitulo, descripcion, seccionId]
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ error: "No se pudo actualizar la sección" });
+      return;
+    }
+
+    console.log("✅ Sección actualizada correctamente");
+
+    res.json({ 
+      mensaje: "Sección actualizada exitosamente",
+      seccion: {
+        id: seccionId,
+        subtitulo,
+        descripcion
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error al actualizar sección:", error);
+    res.status(500).json({ error: "Error al actualizar sección" });
+  }
+};
+
 export const eliminarCurso = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

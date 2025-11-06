@@ -180,7 +180,7 @@ const AdminCrearCurso: React.FC = () => {
       <div className="admin-crear-curso">
         <div className="dashboard-header">
           <div>
-            <h1 className="dashboard-title">Crear Nuevo Curso</h1>
+            <h1 className="dashboard-title">🧠 Crear Nuevo Curso</h1>
             <p className="dashboard-subtitle">Configura todas las secciones y lecciones</p>
           </div>
           <button

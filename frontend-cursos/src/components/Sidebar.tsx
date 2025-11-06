@@ -7,7 +7,6 @@ import {
   X,
   GraduationCap,
   PlusCircle,
-  BarChart3,
   UserCircle,
   List,
   Sun,
@@ -121,7 +120,6 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
     ? [
         { path: "/admin/cursos", icon: List, label: "Gestionar Cursos" },
         { path: "/admin/crear-curso", icon: PlusCircle, label: "Crear Curso" },
-        { path: "/admin/estadisticas", icon: BarChart3, label: "Estadísticas" },
         { path: "/admin/usuarios", icon: Users, label: "Usuarios" },
         { path: "/admin/perfil", icon: UserCircle, label: "Mi Perfil" },
       ]
@@ -157,7 +155,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rol }) => {
                 alt="Perfil"
                 className="avatar-image"
                 title={userData.nombre}
-                key={userData.fotoPerfil} // ✅ Forzar re-render cuando cambie
+                key={userData.fotoPerfil} 
               />
             ) : (
               <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>

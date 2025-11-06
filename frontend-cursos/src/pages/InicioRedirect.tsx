@@ -4,7 +4,7 @@ import { Navigate } from "react-router-dom";
  * 🔸 Componente: InicioRedirect
  * Redirige automáticamente al usuario según su estado de autenticación y rol.
  * - Si no tiene token → va a /login
- * - Si es admin → va a /admin/dashboard
+ * - Si es admin → va a /admin/cursos
  * - Si es usuario normal → va a /dashboard
  */
 const InicioRedirect: React.FC = () => {

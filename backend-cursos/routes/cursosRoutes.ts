@@ -9,17 +9,16 @@ import {
   misCursos,
   crearCursoConSecciones,
   obtenerCursoCompleto,
+  actualizarSeccion,
   upload,
 } from "../controllers/cursosController.js";
 import { verificarToken, soloAdmin } from "../middlewares/auth.js";
 
 const router = express.Router();
 
-/* ======================================================
-  📘 Rutas de gestión de cursos
-====================================================== */
+/* Rutas de gestión de cursos */
 
-// ✅ Crear curso con secciones y archivos (solo admin)
+// Crear curso con secciones y archivos (solo admin)
 router.post(
   "/crear-con-secciones",
   verificarToken,
@@ -28,31 +27,31 @@ router.post(
   crearCursoConSecciones
 );
 
-// ✅ Listar todos los cursos
+// Listar todos los cursos
 router.get("/", listarCursos);
 
-// ✅ Obtener cursos del usuario autenticado
+// Obtener cursos del usuario autenticado
 router.get("/mis-cursos", verificarToken, misCursos);
 
-// ✅ Obtener un curso por su ID
+// Obtener un curso por su ID
 router.get("/:id", obtenerCurso);
 
-// ✅ Inscribirse en un curso
+// Inscribirse en un curso
 router.post("/:id/inscribirse", verificarToken, inscribirEnCurso);
 
-// ✅ Crear curso simple (sin secciones ni archivos)
+// Crear curso simple (sin secciones ni archivos)
 router.post("/", verificarToken, soloAdmin, crearCurso);
 
-// ✅ Actualizar un curso
+// Actualizar un curso
 router.put("/:id", verificarToken, soloAdmin, actualizarCurso);
 
-// ✅ Eliminar un curso
+// Eliminar un curso
 router.delete("/:id", verificarToken, soloAdmin, eliminarCurso);
 
-// ✅ Obtener curso completo con secciones y lecciones
+// Obtener curso completo con secciones y lecciones
 router.get("/completo/:id", verificarToken, obtenerCursoCompleto);
 
-/* ======================================================
-  📤 Exportación del router
-====================================================== */
+// Actualizar una sección de un curso
+router.put("/:cursoId/secciones/:seccionId", verificarToken, soloAdmin, actualizarSeccion);
+
 export default router;

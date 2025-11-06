@@ -5,7 +5,12 @@
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .page-title {
@@ -22,6 +27,7 @@ body.dark .page-title {
 .page-subtitle {
   color: #6c757d;
   margin: 0.5rem 0 0;
+  font-size: 1rem;
 }
 
 body.dark .page-subtitle {
@@ -248,5 +254,9 @@ body.dark .form-control {
 
   .page-title {
     font-size: 1.5rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
   }
 }

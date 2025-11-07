@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: cursos_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: plataforma_cursos
+      MYSQL_USER: cursos_user
+      MYSQL_PASSWORD: cursos_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./basedatos.sql:/docker-entrypoint-initdb.d/basedatos.sql
+    networks:
+      - cursos_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend (Node.js + Express)
+  backend:
+    build:
+      context: ./backend-cursos
+      dockerfile: Dockerfile
+    container_name: cursos_backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DB_HOST: db
+      DB_USER: cursos_user
+      DB_PASSWORD: cursos_password
+      DB_NAME: plataforma_cursos
+      DB_PORT: 3306
+      JWT_SECRET: un_secreto_muy_seguro_para_produccion_cambiar_esto
+    volumes:
+      - ./backend-cursos/uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cursos_network
+    command: sh -c "sleep 10 && npm start"
+
+  # Frontend (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend-cursos
+      dockerfile: Dockerfile
+    container_name: cursos_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:4000
+    depends_on:
+      - backend
+    networks:
+      - cursos_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  cursos_network:
+    driver: bridge

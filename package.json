@@ -4,7 +4,17 @@
   "private": true,
   "scripts": {
     "backend": "cd backend-cursos && npm run dev",
-    "frontend": "cd frontend-cursos && npm start"
+    "frontend": "cd frontend-cursos && npm start",
+
+    "test:backend": "cd backend-cursos && npx jest --coverage",
+    "test:frontend": "cd frontend-cursos && npx jest --coverage",
+    "test:all": "npm run test:backend && npm run test:frontend",
+
+    "test:coverage": "npm run test:backend && npm run test:frontend && npm run merge-coverage",
+    "merge-coverage": "npx jest-merge-coverage backend-cursos/coverage frontend-cursos/coverage -o coverage/merged"
+  },
+  "devDependencies": {
+    "jest-merge-coverage": "^2.0.0"
   },
   "dependencies": {
     "react-feather": "^2.0.10"
